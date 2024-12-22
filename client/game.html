@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Viewer - MyChessGames</title>
     <link rel="stylesheet" href="css/template.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/nav.css">
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="./js/config.js"></script>
+    <script src="./js/auth.js"></script>
     <style>
         .game-container {
             display: flex;
@@ -99,80 +104,61 @@
             padding: 0.5rem;
             border-radius: 4px;
             width: 100%;
+            min-height: 100px;
             resize: vertical;
-        }
-
-        .save-btn {
-            padding: 0.5rem;
-            background: #3692e7;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        .save-btn:hover {
-            background: #2b74b9;
-        }
-
-        .nag {
-            color: #3692e7;
-            margin-left: 0.5rem;
-        }
-
-        .comment {
-            color: #8b8987;
-            margin-top: 0.25rem;
-            margin-left: 2.5rem;
-            font-style: italic;
         }
     </style>
 </head>
 <body>
-    <nav class="nav">
-        <div class="nav-start">
-            <a href="index.html" class="nav-link">MyChessGames</a>
-        </div>
-        <div class="nav-end">
-            <button id="logoutBtn" class="nav-btn">Logout</button>
-        </div>
-    </nav>
+    <!-- Navigation -->
+    <div id="nav-placeholder"></div>
 
-    <div class="game-container">
-        <div class="board-container">
-            <div id="board"></div>
-            <div class="controls">
-                <button class="control-btn" id="startBtn">⏮</button>
-                <button class="control-btn" id="prevBtn">◀</button>
-                <button class="control-btn" id="nextBtn">▶</button>
-                <button class="control-btn" id="endBtn">⏭</button>
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="game-container">
+            <div class="board-container">
+                <div id="board"></div>
+                <div class="controls">
+                    <button class="control-btn" id="startBtn">⟪</button>
+                    <button class="control-btn" id="prevBtn">←</button>
+                    <button class="control-btn" id="nextBtn">→</button>
+                    <button class="control-btn" id="endBtn">⟫</button>
+                </div>
             </div>
-            <div class="annotation-container">
-                <textarea id="moveComment" class="annotation-input" rows="3" placeholder="Add a comment to this move..."></textarea>
-                <select id="moveNag" class="annotation-input">
-                    <option value="">Select annotation</option>
-                    <option value="!">! (Good move)</option>
-                    <option value="!!">!! (Excellent move)</option>
-                    <option value="?">? (Mistake)</option>
-                    <option value="??">?? (Blunder)</option>
-                    <option value="!?">!? (Interesting move)</option>
-                    <option value="?!">?! (Dubious move)</option>
-                </select>
-                <button id="saveAnnotation" class="save-btn">Save Annotation</button>
+            <div class="moves-container">
+                <div id="gameInfo"></div>
+                <ul id="moveList" class="move-list"></ul>
+                <div class="annotation-container">
+                    <textarea id="annotation" class="annotation-input" placeholder="Add your annotations here..."></textarea>
+                </div>
             </div>
-        </div>
-        <div class="moves-container">
-            <div id="gameInfo"></div>
-            <ul id="moveList" class="move-list"></ul>
         </div>
     </div>
 
-    <!-- Load scripts in correct order -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/game.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="./js/nav.js"></script>
+    <script src="./js/game.js"></script>
+    <script>
+        // Load navigation and initialize game only if authenticated
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!requireAuth()) {
+                console.log('Not authenticated, redirecting to login');
+                window.location.replace('index.html');
+                return;
+            }
+
+            // Load navigation
+            fetch('./partials/nav.html')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('nav-placeholder').innerHTML = data;
+                })
+                .catch(error => console.error('Error loading navigation:', error));
+        });
+    </script>
 </body>
 </html>
