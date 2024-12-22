@@ -163,102 +163,20 @@ async function initializeGame() {
 
 function setupAnnotationHandlers() {
     const annotationInput = document.getElementById('moveAnnotation');
-    const saveBtn = document.getElementById('saveAnnotation');
     const symbolBtns = document.querySelectorAll('.symbol-btn');
+    let saveTimeout;
 
-    // Handle quick symbol buttons
-    symbolBtns.forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const symbol = btn.dataset.symbol;
-
-            // Get existing annotation
-            const existingAnnotation = annotations[currentMove] || {};
-
-            // Toggle symbol
-            const currentNag = existingAnnotation.nag || '';
-            const newNag = currentNag === symbol ? '' : symbol;
-
-            // Update button states
-            symbolBtns.forEach(b => {
-                b.dataset.selected = b.dataset.symbol === newNag ? 'true' : 'false';
-            });
-
-            // Save annotation immediately
-            const mergedAnnotation = {
-                comment: existingAnnotation.comment || '',
-                nag: newNag
-            };
-
-            // Convert to array format for server
-            const annotationsArray = Object.entries(annotations)
-                .filter(([moveNumber]) => moveNumber !== currentMove.toString()) // Exclude current move
-                .map(([moveNumber, annotation]) => ({
-                    moveNumber: parseInt(moveNumber),
-                    move: moves[moveNumber],
-                    comment: annotation.comment,
-                    nags: annotation.nag ? [annotation.nag] : []
-                }));
-
-            // Add current move's annotation if it has content
-            if (mergedAnnotation.comment || mergedAnnotation.nag) {
-                annotationsArray.push({
-                    moveNumber: currentMove,
-                    move: moves[currentMove],
-                    comment: mergedAnnotation.comment,
-                    nags: mergedAnnotation.nag ? [mergedAnnotation.nag] : []
-                });
-            }
-
-            // Sort by move number
-            annotationsArray.sort((a, b) => a.moveNumber - b.moveNumber);
-
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/games/${gameId}/annotations`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${getToken()}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ annotations: annotationsArray })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to save annotation');
-                }
-
-                // Update local annotations object
-                if (mergedAnnotation.comment || mergedAnnotation.nag) {
-                    annotations[currentMove] = mergedAnnotation;
-                } else {
-                    delete annotations[currentMove];
-                }
-
-                // Update display
-                displayMoves();
-
-            } catch (error) {
-                console.error('Error saving annotation:', error);
-                alert('Failed to save annotation');
-            }
-        });
-    });
-
-    // Handle save button for text annotations
-    saveBtn.addEventListener('click', async () => {
-        const newComment = annotationInput.value.trim();
-
-        // If no comment is provided, do nothing
-        if (!newComment) return;
-
+    // Function to save annotations
+    async function saveAnnotation(newComment, newNag) {
         // Get existing annotation
         const existingAnnotation = annotations[currentMove] || {};
-
-        // Merge new comment with existing NAG
+        
+        // Merge new values with existing ones
         const mergedAnnotation = {
-            comment: newComment,
-            nag: existingAnnotation.nag || ''
+            comment: newComment ?? existingAnnotation.comment ?? '',
+            nag: newNag ?? existingAnnotation.nag ?? ''
         };
-
+        
         // Convert to array format for server
         const annotationsArray = Object.entries(annotations)
             .filter(([moveNumber]) => moveNumber !== currentMove.toString()) // Exclude current move
@@ -268,18 +186,20 @@ function setupAnnotationHandlers() {
                 comment: annotation.comment,
                 nags: annotation.nag ? [annotation.nag] : []
             }));
-
-        // Add current move's annotation
-        annotationsArray.push({
-            moveNumber: currentMove,
-            move: moves[currentMove],
-            comment: mergedAnnotation.comment,
-            nags: mergedAnnotation.nag ? [mergedAnnotation.nag] : []
-        });
-
+        
+        // Add current move's annotation if it has content
+        if (mergedAnnotation.comment || mergedAnnotation.nag) {
+            annotationsArray.push({
+                moveNumber: currentMove,
+                move: moves[currentMove],
+                comment: mergedAnnotation.comment,
+                nags: mergedAnnotation.nag ? [mergedAnnotation.nag] : []
+            });
+        }
+        
         // Sort by move number
         annotationsArray.sort((a, b) => a.moveNumber - b.moveNumber);
-
+        
         try {
             const response = await fetch(`${CONFIG.API_URL}/games/${gameId}/annotations`, {
                 method: 'PATCH',
@@ -289,24 +209,60 @@ function setupAnnotationHandlers() {
                 },
                 body: JSON.stringify({ annotations: annotationsArray })
             });
-
+            
             if (!response.ok) {
                 throw new Error('Failed to save annotation');
             }
-
+            
             // Update local annotations object
-            annotations[currentMove] = mergedAnnotation;
-
+            if (mergedAnnotation.comment || mergedAnnotation.nag) {
+                annotations[currentMove] = mergedAnnotation;
+            } else {
+                delete annotations[currentMove];
+            }
+            
             // Update display
             displayMoves();
-
-            // Clear comment input
-            annotationInput.value = '';
-
+            
         } catch (error) {
             console.error('Error saving annotation:', error);
-            alert('Failed to save annotation');
+            // Don't show alert for auto-save to avoid disrupting the user
         }
+    }
+
+    // Handle text annotation input with debounce
+    annotationInput.addEventListener('input', () => {
+        // Clear any pending save
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+        }
+        
+        // Set new timeout to save after typing stops
+        saveTimeout = setTimeout(() => {
+            const newComment = annotationInput.value.trim();
+            if (newComment !== (annotations[currentMove]?.comment || '')) {
+                saveAnnotation(newComment, null);
+            }
+        }, 1000); // Wait 1 second after typing stops
+    });
+    
+    // Handle quick symbol buttons
+    symbolBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const symbol = btn.dataset.symbol;
+            
+            // Toggle symbol
+            const currentNag = annotations[currentMove]?.nag || '';
+            const newNag = currentNag === symbol ? '' : symbol;
+            
+            // Update button states
+            symbolBtns.forEach(b => {
+                b.dataset.selected = b.dataset.symbol === newNag ? 'true' : 'false';
+            });
+            
+            // Save immediately
+            saveAnnotation(null, newNag);
+        });
     });
 }
 
@@ -407,6 +363,8 @@ function displayMoves() {
 
     // Add click handlers to moves
     const moveElements = moveList.querySelectorAll('.move');
+    const annotationInput = document.getElementById('moveAnnotation');
+    
     moveElements.forEach((moveElement, index) => {
         moveElement.addEventListener('click', () => {
             currentMove = index;
@@ -416,12 +374,8 @@ function displayMoves() {
 
             // Load annotation for this move
             const annotation = annotations[currentMove];
-            if (annotation) {
-                document.getElementById('moveAnnotation').value = annotation.comment || '';
-                document.getElementById('moveNag').value = annotation.nag || '';
-            } else {
-                document.getElementById('moveAnnotation').value = '';
-                document.getElementById('moveNag').value = '';
+            if (annotationInput) {  
+                annotationInput.value = annotation?.comment || '';
             }
         });
     });

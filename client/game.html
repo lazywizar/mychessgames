@@ -160,11 +160,8 @@
 
         .quick-symbols {
             display: flex;
-            gap: 0.25rem;
-            padding: 0.5rem;
-            background: #f7f7f7;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
             margin: 0.5rem 0;
             flex-wrap: wrap;
             justify-content: center;
@@ -172,23 +169,22 @@
 
         .symbol-btn {
             padding: 0.25rem 0.5rem;
-            min-width: 2rem;
-            background: #fff;
-            border: 1px solid #ccc;
+            min-width: 1.5rem;
+            background: none;
+            border: none;
             color: #2e2e2c;
             cursor: pointer;
-            border-radius: 4px;
             font-weight: bold;
             text-align: center;
         }
 
         .symbol-btn:hover {
-            background: #e0e0e0;
+            color: #666;
         }
 
         .symbol-btn[data-selected="true"] {
-            background: #e0e0e0;
-            border-color: #999;
+            color: #3692e7;
+            font-weight: bold;
         }
 
         #gameInfo {
@@ -244,9 +240,6 @@
                 </div>
                 <div class="annotation-container">
                     <textarea id="moveAnnotation" class="annotation-input" placeholder="Add annotation for current move..."></textarea>
-                    <div class="annotation-controls">
-                        <button id="saveAnnotation" class="save-btn">Save Annotation</button>
-                    </div>
                 </div>
             </div>
             <div class="moves-container">
