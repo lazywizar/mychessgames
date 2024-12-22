@@ -1,5 +1,20 @@
 const mongoose = require('mongoose');
 
+// Schema for move annotations
+const annotationSchema = new mongoose.Schema({
+    moveNumber: {
+        type: Number,
+        required: true
+    },
+    move: {
+        type: String,
+        required: true
+    },
+    comment: String,
+    nags: [String], // Numeric Annotation Glyphs (e.g., !!, !?, ?!, etc.)
+    variations: [String]
+}, { _id: false });
+
 const gameSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -63,6 +78,11 @@ const gameSchema = new mongoose.Schema({
     termination: {
         type: String,
         default: null
+    },
+    annotations: [annotationSchema],
+    generalComments: {
+        type: String,
+        default: ''
     },
     createdAt: {
         type: Date,
@@ -134,6 +154,8 @@ gameSchema.methods.toAPI = function() {
         timeControl: this.timeControl,
         termination: this.termination,
         pgn: this.pgn,
+        annotations: this.annotations,
+        generalComments: this.generalComments,
         createdAt: this.formattedCreatedAt
     };
 };

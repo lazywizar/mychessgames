@@ -18,7 +18,26 @@
     <div class="main-content">
         <div class="dashboard-container">
             <div id="gamesContainer">
-                <!-- Games table or empty state will be inserted here -->
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <h2>Welcome to MyChessGames!</h2>
+                    <p>You haven't uploaded any games yet. Click "Add Games" to get started.</p>
+                </div>
+
+                <div id="gamesTable" class="games-table" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>White</th>
+                                <th>Black</th>
+                                <th>Result</th>
+                                <th>Event</th>
+                                <th>ECO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gamesTableBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -33,7 +52,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="file-upload-area" id="dropZone">
+                <div id="dropZone" class="drop-zone">
                     <i class="fas fa-cloud-upload-alt file-upload-icon"></i>
                     <p class="file-upload-text">Drag and drop your PGN file here</p>
                     <p class="file-upload-text">or</p>
@@ -49,6 +68,8 @@
 
     <!-- Scripts -->
     <script src="./js/config.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="./js/auth.js"></script>
     <script src="./js/nav.js"></script>
     <script src="./js/dashboard.js"></script>
     <script>

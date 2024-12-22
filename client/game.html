@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Viewer - MyChessGames</title>
+    <link rel="stylesheet" href="css/template.css">
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <style>
+        .game-container {
+            display: flex;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .board-container {
+            flex: 0 0 600px;
+        }
+
+        .moves-container {
+            flex: 1;
+            background: #262421;
+            padding: 1rem;
+            border-radius: 4px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .move-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .move-item {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.25rem 0;
+            cursor: pointer;
+        }
+
+        .move-item:hover {
+            background: #302e2c;
+        }
+
+        .move-number {
+            color: #8b8987;
+            width: 2.5rem;
+        }
+
+        .move {
+            color: #fff;
+            padding: 0 0.5rem;
+            border-radius: 2px;
+        }
+
+        .move.active {
+            background: #3692e7;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 0.5rem;
+            background: #262421;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .control-btn:hover {
+            background: #302e2c;
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .annotation-container {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .annotation-input {
+            background: #262421;
+            border: 1px solid #3d3d3d;
+            color: #fff;
+            padding: 0.5rem;
+            border-radius: 4px;
+            width: 100%;
+            resize: vertical;
+        }
+
+        .save-btn {
+            padding: 0.5rem;
+            background: #3692e7;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .save-btn:hover {
+            background: #2b74b9;
+        }
+
+        .nag {
+            color: #3692e7;
+            margin-left: 0.5rem;
+        }
+
+        .comment {
+            color: #8b8987;
+            margin-top: 0.25rem;
+            margin-left: 2.5rem;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-start">
+            <a href="index.html" class="nav-link">MyChessGames</a>
+        </div>
+        <div class="nav-end">
+            <button id="logoutBtn" class="nav-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="game-container">
+        <div class="board-container">
+            <div id="board"></div>
+            <div class="controls">
+                <button class="control-btn" id="startBtn">⏮</button>
+                <button class="control-btn" id="prevBtn">◀</button>
+                <button class="control-btn" id="nextBtn">▶</button>
+                <button class="control-btn" id="endBtn">⏭</button>
+            </div>
+            <div class="annotation-container">
+                <textarea id="moveComment" class="annotation-input" rows="3" placeholder="Add a comment to this move..."></textarea>
+                <select id="moveNag" class="annotation-input">
+                    <option value="">Select annotation</option>
+                    <option value="!">! (Good move)</option>
+                    <option value="!!">!! (Excellent move)</option>
+                    <option value="?">? (Mistake)</option>
+                    <option value="??">?? (Blunder)</option>
+                    <option value="!?">!? (Interesting move)</option>
+                    <option value="?!">?! (Dubious move)</option>
+                </select>
+                <button id="saveAnnotation" class="save-btn">Save Annotation</button>
+            </div>
+        </div>
+        <div class="moves-container">
+            <div id="gameInfo"></div>
+            <ul id="moveList" class="move-list"></ul>
+        </div>
+    </div>
+
+    <!-- Load scripts in correct order -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
