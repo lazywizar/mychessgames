@@ -9,6 +9,8 @@ let variations = {};
 let isEditMode = true;
 let currentPath = [];
 let selectedMove = null;
+let isDrawing = false;
+let shapes = [];
 
 // Get game ID from URL
 const urlParams = new URLSearchParams(window.location.search);
@@ -47,20 +49,11 @@ async function initGame() {
         throw new Error('Unauthorized');
     }
 
-    // Wait for Chessground to be available
-    let retries = 0;
-    while (typeof Chessground === 'undefined' && retries < 10) {
-        console.log('Waiting for Chessground to load...');
-        await new Promise(resolve => setTimeout(resolve, 100));
-        retries++;
-    }
-
-    if (typeof Chessground === 'undefined') {
-        console.log('Chessground library not found');
-        throw new Error('Failed to load Chessground library');
-    }
-
     try {
+        // Initialize chess.js first
+        game = new Chess();
+        moves = [];  // Initialize moves array
+
         // Fetch game data
         const response = await fetch(`${CONFIG.API_URL}/games/${gameId}`, {
             headers: {
@@ -76,38 +69,27 @@ async function initGame() {
 
         gameData = await response.json();
 
-        // Initialize chess.js
-        game = new Chess();
-        if (!game.load_pgn(gameData.pgn)) {
+        // Load PGN and parse moves
+        if (gameData.pgn && !game.load_pgn(gameData.pgn)) {
             throw new Error('Invalid PGN format');
         }
 
-        // Store initial moves
-        moves = game.history();
+        // Set moves from either gameData or chess.js history
+        moves = gameData.moves ? 
+            gameData.moves.split(' ').filter(move => move.trim()) : 
+            game.history({ verbose: true });
 
-        // Process annotations and variations
-        if (gameData.annotations) {
+        console.log('Moves initialized:', moves);
+
+        // Process annotations into a more usable format
+        annotations = {};
+        if (gameData.annotations && Array.isArray(gameData.annotations)) {
             gameData.annotations.forEach(ann => {
-                const moveNumber = parseInt(ann.moveNumber);
-
-                if (ann.variation && ann.variation.length > 0) {
-                    if (!variations[moveNumber]) {
-                        variations[moveNumber] = [];
-                    }
-                    variations[moveNumber].push({
-                        moveNumber: moveNumber,
-                        move: moves[moveNumber],
-                        variation: ann.variation,
-                        previousMoves: ann.previousMoves || moves.slice(0, moveNumber),
-                        comment: ann.comment || '',
-                        nags: ann.nags || []
-                    });
-                } else if (ann.comment || ann.nags?.length > 0) {
-                    annotations[moveNumber] = {
-                        comment: ann.comment || '',
-                        nag: ann.nags?.[0] || ''
-                    };
-                }
+                annotations[ann.moveNumber] = {
+                    comment: ann.comment || '',
+                    nag: ann.nags && ann.nags.length > 0 ? ann.nags[0] : '',
+                    shapes: ann.shapes || []
+                };
             });
         }
 
@@ -167,7 +149,15 @@ function initializeChessground() {
             enabled: true,
             visible: true,
             defaultSnapToValidMove: true,
-            eraseOnClick: false
+            eraseOnClick: false,
+            shapes: [],
+            autoShapes: [],
+            brushes: {
+                green: { key: 'g', color: '#15781B', opacity: 1, lineWidth: 10 },
+                red: { key: 'r', color: '#882020', opacity: 1, lineWidth: 10 },
+                blue: { key: 'b', color: '#003088', opacity: 1, lineWidth: 10 },
+                yellow: { key: 'y', color: '#e68f00', opacity: 1, lineWidth: 10 }
+            }
         },
         coordinates: true,
         autoCastle: true,
@@ -185,7 +175,7 @@ function initializeChessground() {
     }
 
     // Initialize Chessground
-    ground = Chessground.Chessground(el, config);  // Note the change here
+    ground = Chessground.Chessground(el, config);  
 
     if (!ground) {
         throw new Error('Failed to initialize Chessground');
@@ -210,21 +200,21 @@ function getValidMoves() {
 }
 
 async function onMove(orig, dest) {
-    if (!isEditMode) return;
-
+    // Make the move in chess.js
     const move = game.move({
         from: orig,
         to: dest,
         promotion: 'q' // Always promote to queen for simplicity
     });
 
-    if (move === null) return;
+    if (!move) return false;
 
-    // If we're not at the end of the main line
+    console.log('Move made:', move); // Debug log
+
+    // If we're not at the end of the main line, create a variation
     if (currentMove < moves.length - 1) {
         const variation = {
-            moveNumber: currentMove + 1,
-            move: moves[currentMove + 1],
+            moveNumber: Math.floor(currentMove / 2) + 1,
             variation: [move.san],
             previousMoves: moves.slice(0, currentMove + 1)
         };
@@ -234,63 +224,140 @@ async function onMove(orig, dest) {
         }
         variations[currentMove + 1].push(variation);
 
-        await saveVariation(variation);
+        // Save the variation
+        saveVariation(variation);
     } else {
+        // Adding a new move at the end
         moves.push(move.san);
         currentMove++;
     }
 
-    updatePosition();
+    // Update the position
+    ground.set({
+        fen: game.fen(),
+        turnColor: game.turn() === 'w' ? 'white' : 'black',
+        movable: {
+            color: game.turn() === 'w' ? 'white' : 'black',
+            dests: getValidMoves()
+        }
+    });
+
+    // Update display
     displayMoves();
     updateControls();
 }
 
 function setupEventHandlers() {
     // Board controls
-    document.getElementById('flipBtn').addEventListener('click', () => {
-        ground.toggleOrientation();
-    });
+    const flipBtn = document.getElementById('flipBtn');
+    if (flipBtn) {
+        flipBtn.addEventListener('click', () => {
+            ground.toggleOrientation();
+        });
+    }
 
-    document.getElementById('editBtn').addEventListener('click', () => {
-        isEditMode = !isEditMode;
-        document.getElementById('editBtn').classList.toggle('active');
-        ground.set({
-            movable: { free: false, events: { after: onMove }, dests: getValidMoves() },
-            draggable: { enabled: isEditMode }
+    // Drawing mode
+    const drawBtn = document.getElementById('drawBtn');
+    if (drawBtn) {
+        drawBtn.addEventListener('click', () => {
+            isDrawing = !isDrawing;
+            drawBtn.classList.toggle('active');
+            ground.set({
+                drawable: {
+                    enabled: isDrawing
+                }
+            });
+        });
+    }
+
+    // Navigation controls
+    const startBtn = document.getElementById('startBtn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            currentMove = -1;
+            updatePosition();
+            displayMoves();
+        });
+    }
+
+    const prevBtn = document.getElementById('prevBtn');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (currentMove >= 0) {
+                currentMove--;
+                updatePosition();
+                displayMoves();
+            }
+        });
+    }
+
+    const nextBtn = document.getElementById('nextBtn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            if (currentMove < moves.length - 1) {
+                currentMove++;
+                updatePosition();
+                displayMoves();
+            }
+        });
+    }
+
+    const endBtn = document.getElementById('endBtn');
+    if (endBtn) {
+        endBtn.addEventListener('click', () => {
+            currentMove = moves.length - 1;
+            updatePosition();
+            displayMoves();
+        });
+    }
+
+    // Annotation handlers
+    const moveComment = document.getElementById('moveComment');
+    if (moveComment) {
+        moveComment.addEventListener('change', () => {
+            if (currentMove >= 0) {
+                const comment = moveComment.value.trim();
+                if (comment) {
+                    if (!annotations[currentMove]) {
+                        annotations[currentMove] = {};
+                    }
+                    annotations[currentMove].comment = comment;
+                    saveAnnotation(currentMove, { comment });
+                }
+            }
+        });
+    }
+
+    // NAG buttons
+    const nagButtons = document.querySelectorAll('.nag-buttons .button');
+    nagButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            if (currentMove >= 0) {
+                const symbol = button.dataset.symbol;
+                if (!annotations[currentMove]) {
+                    annotations[currentMove] = {};
+                }
+                annotations[currentMove].nag = symbol;
+                saveAnnotation(currentMove, { nag: symbol });
+                displayMoves();
+            }
         });
     });
 
-    // Navigation controls
-    document.getElementById('startBtn').addEventListener('click', () => {
-        currentMove = -1;
-        updatePosition();
-        displayMoves();
-    });
-
-    document.getElementById('prevBtn').addEventListener('click', () => {
-        if (currentMove >= 0) {
-            currentMove--;
-            updatePosition();
-            displayMoves();
+    // Drawing handlers
+    ground.set({
+        drawable: {
+            onChange: (shapes) => {
+                if (currentMove >= 0) {
+                    if (!annotations[currentMove]) {
+                        annotations[currentMove] = {};
+                    }
+                    annotations[currentMove].shapes = shapes;
+                    saveAnnotation(currentMove, { shapes });
+                }
+            }
         }
     });
-
-    document.getElementById('nextBtn').addEventListener('click', () => {
-        if (currentMove < moves.length - 1) {
-            currentMove++;
-            updatePosition();
-            displayMoves();
-        }
-    });
-
-    document.getElementById('endBtn').addEventListener('click', () => {
-        currentMove = moves.length - 1;
-        updatePosition();
-        displayMoves();
-    });
-
-    // Context menu handlers
-    setupContextMenu();
 }
 
 function setupContextMenu() {
@@ -320,7 +387,6 @@ function setupContextMenu() {
                 currentMove = selectedMove;
                 updatePosition();
                 isEditMode = true;
-                document.getElementById('editBtn').classList.add('active');
                 ground.set({
                     movable: { free: false, events: { after: onMove }, dests: getValidMoves() },
                     draggable: { enabled: true }
@@ -364,45 +430,84 @@ function showAnnotationDialog(moveIndex) {
     dialog.style.display = 'block';
 }
 
-async function saveAnnotation(moveIndex, text) {
-    try {
-        // Prepare annotation data
-        const annotation = {
-            moveNumber: moveIndex,
-            move: moves[moveIndex],
-            comment: text,
-            nags: []
+async function saveAnnotation(moveIndex, annotationData) {
+    if (!gameId || !moves || moveIndex >= moves.length) return;
+
+    // Get existing annotations
+    const currentAnnotations = gameData.annotations || [];
+    
+    // Create the annotation object with required fields
+    const annotation = {
+        moveNumber: moveIndex,
+        move: moves[moveIndex].san || moves[moveIndex],
+        ...annotationData,
+        nags: annotationData.nag ? [annotationData.nag] : [],
+        variations: annotationData.variations || [],
+        shapes: annotationData.shapes || []  // Ensure shapes are included
+    };
+    
+    // Update local annotations object for immediate use
+    annotations[moveIndex] = {
+        comment: annotation.comment || '',
+        nag: annotation.nags && annotation.nags.length > 0 ? annotation.nags[0] : '',
+        shapes: annotation.shapes || []
+    };
+    
+    // Update or add the annotation in the gameData
+    const existingIndex = currentAnnotations.findIndex(a => a.moveNumber === moveIndex);
+    if (existingIndex !== -1) {
+        currentAnnotations[existingIndex] = {
+            ...currentAnnotations[existingIndex],
+            ...annotation
         };
-
-        // Save to server
-        const response = await fetch(`${CONFIG.API_URL}/games/${gameId}/annotations`, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${getToken()}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                annotations: [annotation]
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to save annotation');
-        }
-
-        // Update local state
-        annotations[moveIndex] = {
-            comment: text,
-            nag: ''
-        };
-
-        // Refresh display
-        displayMoves();
-
-    } catch (error) {
-        console.error('Error saving annotation:', error);
-        alert('Failed to save annotation');
+    } else {
+        currentAnnotations.push(annotation);
     }
+    
+    // Update local state
+    gameData.annotations = currentAnnotations;
+    
+    // Send to server
+    fetch(`${CONFIG.API_URL}/games/${gameId}/annotations`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify({
+            annotations: currentAnnotations
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Annotation saved:', data);
+        // Update local game data with server response
+        gameData = data;
+        
+        // Update local annotations from the response
+        if (data.annotations) {
+            data.annotations.forEach(ann => {
+                annotations[ann.moveNumber] = {
+                    comment: ann.comment || '',
+                    nag: ann.nags && ann.nags.length > 0 ? ann.nags[0] : '',
+                    shapes: ann.shapes || []
+                };
+            });
+        }
+        
+        // Refresh the display
+        displayMoves();
+    })
+    .catch(error => {
+        console.error('Error saving annotation:', error);
+        // Revert local state on error
+        gameData.annotations = [...currentAnnotations];
+    });
 }
 
 async function saveVariation(variation) {
@@ -438,229 +543,205 @@ async function saveVariation(variation) {
 }
 
 function displayGameInfo() {
-    const gameInfo = document.getElementById('gameInfo');
-    if (!gameInfo || !gameData) return;
+    if (!gameData) return;
 
-    const info = [];
-    if (gameData.event && gameData.event !== 'Casual Game') info.push(`Event: ${gameData.event}`);
-    if (gameData.site && gameData.site !== 'Unknown') info.push(`Site: ${gameData.site}`);
-    if (gameData.date && gameData.date !== 'Unknown Date') info.push(`Date: ${gameData.date}`);
-    if (gameData.white && gameData.white !== 'Unknown') info.push(`White: ${gameData.white}`);
-    if (gameData.black && gameData.black !== 'Unknown') info.push(`Black: ${gameData.black}`);
-    if (gameData.result) info.push(`Result: ${gameData.result}`);
-    if (gameData.eco) info.push(`ECO: ${gameData.eco}`);
+    // Update player info
+    const whitePlayerEl = document.getElementById('whitePlayer');
+    const whiteRatingEl = document.getElementById('whiteRating');
+    const blackPlayerEl = document.getElementById('blackPlayer');
+    const blackRatingEl = document.getElementById('blackRating');
+    const gameEventEl = document.getElementById('gameEvent');
+    const gameDateEl = document.getElementById('gameDate');
 
-    gameInfo.innerHTML = `
-        <div class="game-header">
-            <div class="game-title">${info.slice(0, 3).join(' • ')}</div>
-            <div class="game-players">${info.slice(3).join(' • ')}</div>
-        </div>
-    `;
+    if (whitePlayerEl) whitePlayerEl.textContent = gameData.white || 'White';
+    if (whiteRatingEl) whiteRatingEl.textContent = gameData.whiteElo ? `(${gameData.whiteElo})` : '';
+    if (blackPlayerEl) blackPlayerEl.textContent = gameData.black || 'Black';
+    if (blackRatingEl) blackRatingEl.textContent = gameData.blackElo ? `(${gameData.blackElo})` : '';
+    
+    // Update game metadata
+    const event = gameData.event || 'Game';
+    const timeControl = gameData.timeControl || 'Standard';
+    if (gameEventEl) gameEventEl.textContent = `${event} • ${timeControl}`;
+    if (gameDateEl) gameDateEl.textContent = gameData.date || '';
 }
 
 function displayMoves() {
-    const moveList = document.getElementById('moveList');
-    moveList.innerHTML = '';
+    const movesDiv = document.getElementById('moves');
+    if (!movesDiv || !moves) return;
 
-    for (let i = 0; i < moves.length; i++) {
-        const moveNumber = Math.floor(i / 2) + 1;
-        const isWhite = i % 2 === 0;
+    movesDiv.innerHTML = '';
+    let currentIndex = 0;
+    let moveNumber = 1;
 
-        if (isWhite) {
-            const li = document.createElement('li');
-            li.className = 'move-item';
-
-            const moveNumberSpan = document.createElement('span');
-            moveNumberSpan.className = 'move-number';
-            moveNumberSpan.textContent = `${moveNumber}.`;
-            li.appendChild(moveNumberSpan);
-
-            const whiteMove = createMoveElement(moves[i], i);
-            li.appendChild(whiteMove);
-
-            // Add annotations
-            if (annotations[i]?.comment) {
-                const comment = document.createElement('div');
-                comment.className = 'move-comment';
-                comment.textContent = annotations[i].comment;
-                li.appendChild(comment);
-            }
-
-            // Add variations
-            if (variations[i]) {
-                variations[i].forEach(variation => {
-                    const variationDiv = createVariationElement(variation, moveNumber);
-                    li.appendChild(variationDiv);
-                });
-            }
-
-            moveList.appendChild(li);
-        } else {
-            const li = moveList.lastElementChild;
-            const blackMove = createMoveElement(moves[i], i);
-            li.appendChild(blackMove);
-
-            // Add annotations
-            if (annotations[i]?.comment) {
-                const comment = document.createElement('div');
-                comment.className = 'move-comment';
-                comment.textContent = annotations[i].comment;
-                li.appendChild(comment);
-            }
-
-            // Add variations
-            if (variations[i]) {
-                variations[i].forEach(variation => {
-                    const variationDiv = createVariationElement(variation, moveNumber);
-                    li.appendChild(variationDiv);
-                });
-            }
-        }
+    // If no moves, display initial position
+    if (!moves.length) {
+        const moveContainer = document.createElement('div');
+        moveContainer.className = 'move-row';
+        moveContainer.textContent = 'Initial position';
+        movesDiv.appendChild(moveContainer);
+        return;
     }
 
-    // Scroll active move into view
-    const activeMove = moveList.querySelector('.move.active');
-    if (activeMove) {
-        activeMove.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    while (currentIndex < moves.length) {
+        const moveContainer = document.createElement('div');
+        moveContainer.className = 'move-row';
+
+        // Move number
+        const numberSpan = document.createElement('span');
+        numberSpan.className = 'move-number';
+        numberSpan.textContent = `${moveNumber}.`;
+        moveContainer.appendChild(numberSpan);
+
+        // White's move
+        if (currentIndex < moves.length) {
+            try {
+                const whiteMove = createMoveElement(moves[currentIndex], currentIndex, true);
+                moveContainer.appendChild(whiteMove);
+                currentIndex++;
+            } catch (error) {
+                console.error('Error creating white move:', error);
+            }
+        }
+
+        // Black's move
+        if (currentIndex < moves.length) {
+            try {
+                const blackMove = createMoveElement(moves[currentIndex], currentIndex, false);
+                moveContainer.appendChild(blackMove);
+                currentIndex++;
+            } catch (error) {
+                console.error('Error creating black move:', error);
+            }
+        }
+
+        // Display variations if any
+        if (variations[moveNumber]) {
+            variations[moveNumber].forEach(variation => {
+                try {
+                    const variationDiv = document.createElement('div');
+                    variationDiv.className = 'variation';
+                    variation.moves.forEach((move, i) => {
+                        const moveEl = createMoveElement(move, `${moveNumber}-${i}`, i % 2 === 0);
+                        variationDiv.appendChild(moveEl);
+                    });
+                    moveContainer.appendChild(variationDiv);
+                } catch (error) {
+                    console.error('Error creating variation:', error);
+                }
+            });
+        }
+
+        movesDiv.appendChild(moveContainer);
+        moveNumber++;
+    }
+
+    // Highlight current move
+    const moveElements = movesDiv.querySelectorAll('.move');
+    moveElements.forEach((move, index) => {
+        move.classList.toggle('current', index === currentMove);
+    });
+
+    // Scroll to current move
+    if (currentMove >= 0) {
+        const currentMoveEl = moveElements[currentMove];
+        if (currentMoveEl) {
+            currentMoveEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 }
 
-function createMoveElement(move, index) {
-    const span = document.createElement('span');
-    span.className = `move${index === currentMove ? ' active' : ''}`;
-    span.textContent = move;
-
-    // Add NAG if exists
-    if (annotations[index]?.nag) {
-        span.textContent += ' ' + annotations[index].nag;
+function createMoveElement(move, index, isWhite) {
+    const moveSpan = document.createElement('span');
+    moveSpan.className = `move ${isWhite ? 'white' : 'black'}`;
+    
+    let moveText = move.san;
+    
+    // Add NAG symbol if exists
+    if (annotations[index] && annotations[index].nag) {
+        moveText += annotations[index].nag;
     }
-
-    // Add click handler
-    span.addEventListener('click', () => {
-        currentMove = index;
+    
+    moveSpan.textContent = moveText;
+    
+    // Add comment indicator if exists
+    if (annotations[index] && annotations[index].comment) {
+        const commentIcon = document.createElement('span');
+        commentIcon.className = 'comment-icon';
+        commentIcon.textContent = '💭';
+        commentIcon.title = annotations[index].comment;
+        moveSpan.appendChild(commentIcon);
+    }
+    
+    // Add shape indicator if exists
+    if (annotations[index] && annotations[index].shapes && annotations[index].shapes.length > 0) {
+        const shapeIcon = document.createElement('span');
+        shapeIcon.className = 'shape-icon';
+        shapeIcon.textContent = '✏️';
+        moveSpan.appendChild(shapeIcon);
+    }
+    
+    moveSpan.addEventListener('click', () => {
+        currentMove = typeof index === 'string' ? parseInt(index.split('-')[1]) : index;
         updatePosition();
         displayMoves();
     });
-
-    // Add context menu
-    span.addEventListener('contextmenu', (e) => {
-        showContextMenu(e, index);
-    });
-
-    return span;
-}
-
-function createVariationElement(variation, moveNumber) {
-    const variationDiv = document.createElement('div');
-    variationDiv.className = 'move-tree';
-
-    const marker = document.createElement('div');
-    marker.className = 'variation-marker';
-    variationDiv.appendChild(marker);
-
-    // Show variation moves
-    const variationMoves = document.createElement('div');
-    variationMoves.className = 'variation-moves';
-
-    // Add variation moves
-    variation.variation.forEach((move, idx) => {
-        // Add move number for white moves
-        if (idx % 2 === 0) {
-            const varMoveNumber = document.createElement('span');
-            varMoveNumber.className = 'move-number';
-            varMoveNumber.textContent = `${moveNumber + Math.floor(idx/2)}.`;
-            variationMoves.appendChild(varMoveNumber);
-        }
-
-        const moveSpan = document.createElement('span');
-        moveSpan.className = 'move';
-        moveSpan.textContent = move;
-
-        // Add click handler for variation moves
-        moveSpan.addEventListener('click', () => {
-            playVariation(variation, idx);
-        });
-
-        // Add context menu for variation moves
-        moveSpan.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            // TODO: Implement variation-specific context menu if needed
-        });
-
-        variationMoves.appendChild(moveSpan);
-    });
-
-    // Add comment if exists
-    if (variation.comment) {
-        const comment = document.createElement('div');
-        comment.className = 'move-comment';
-        comment.textContent = variation.comment;
-        variationMoves.appendChild(comment);
-    }
-
-    variationDiv.appendChild(variationMoves);
-    return variationDiv;
-}
-
-function playVariation(variation, moveIndex) {
-    // Reset to initial position
-    game.reset();
-
-    // Play the moves leading up to the variation
-    variation.previousMoves.forEach(move => {
-        game.move(move);
-    });
-
-    // Play the variation moves up to the selected index
-    for (let i = 0; i <= moveIndex; i++) {
-        game.move(variation.variation[i]);
-    }
-
-    // Update the board
-    ground.set({
-        fen: game.fen(),
-        turnColor: game.turn() === 'w' ? 'white' : 'black',
-        movable: {
-            color: game.turn() === 'w' ? 'white' : 'black',
-            dests: getValidMoves()
-        }
-    });
+    
+    return moveSpan;
 }
 
 function updatePosition() {
-    // Reset to initial position
-    game.reset();
-
-    // Replay moves up to current position
-    for (let i = 0; i <= currentMove; i++) {
-        game.move(moves[i]);
+    if (currentMove === -1) {
+        game.reset();
+    } else {
+        game.reset();
+        for (let i = 0; i <= currentMove; i++) {
+            game.move(moves[i]);
+        }
     }
-
-    // Get last move for highlighting
-    let lastMove = null;
-    if (currentMove >= 0 && moves[currentMove]) {
-        const move = game.history({ verbose: true })[currentMove];
-        lastMove = move ? [move.from, move.to] : null;
-    }
-
-    // Update Chessground
+    
     ground.set({
         fen: game.fen(),
         turnColor: game.turn() === 'w' ? 'white' : 'black',
         movable: {
-            color: isEditMode ? (game.turn() === 'w' ? 'white' : 'black') : 'none',
-            dests: isEditMode ? getValidMoves() : new Map()
-        },
-        lastMove: lastMove
+            color: 'both',
+            dests: getValidMoves()
+        }
     });
-
-    // Update controls
-    updateControls();
+    
+    // Update shapes and comments
+    if (annotations[currentMove]) {
+        const annotation = annotations[currentMove];
+        
+        // Update shapes
+        if (annotation.shapes && Array.isArray(annotation.shapes)) {
+            ground.setShapes(annotation.shapes);
+        } else {
+            ground.setShapes([]);
+        }
+        
+        // Update comment
+        const commentInput = document.getElementById('moveComment');
+        if (commentInput) {
+            commentInput.value = annotation.comment || '';
+        }
+    } else {
+        ground.setShapes([]);
+        const commentInput = document.getElementById('moveComment');
+        if (commentInput) {
+            commentInput.value = '';
+        }
+    }
 }
 
 function updateControls() {
-    document.getElementById('startBtn').disabled = currentMove < 0;
-    document.getElementById('prevBtn').disabled = currentMove < 0;
-    document.getElementById('nextBtn').disabled = currentMove >= moves.length - 1;
-    document.getElementById('endBtn').disabled = currentMove >= moves.length - 1;
+    // Update navigation buttons state
+    const startBtn = document.getElementById('startBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const endBtn = document.getElementById('endBtn');
+
+    if (startBtn) startBtn.disabled = currentMove <= -1;
+    if (prevBtn) prevBtn.disabled = currentMove <= -1;
+    if (nextBtn) nextBtn.disabled = currentMove >= moves.length - 1;
+    if (endBtn) endBtn.disabled = currentMove >= moves.length - 1;
 }

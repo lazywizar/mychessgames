@@ -68,6 +68,11 @@ router.patch('/:id/annotations', auth, async (req, res) => {
         }
 
         const { annotations } = req.body;
+        if (!Array.isArray(annotations)) {
+            logger.error('Invalid annotations format: not an array');
+            return res.status(400).json({ error: 'Annotations must be an array' });
+        }
+
         logger.info(`Updating annotations for game ${req.params.id}`);
 
         const game = await Game.findOne({
@@ -80,7 +85,28 @@ router.patch('/:id/annotations', auth, async (req, res) => {
             return res.status(404).json({ error: 'Game not found' });
         }
 
-        game.annotations = annotations;
+        // Process each annotation to ensure it has required fields
+        const processedAnnotations = annotations.map(ann => {
+            // If the annotation already has all required fields, use it as is
+            if (ann.move && ann.moveNumber !== undefined) {
+                return ann;
+            }
+
+            // Get the move from the game's moves array
+            const moves = game.moves.split(' ').filter(m => m.trim());
+            const move = moves[ann.moveNumber] || 'Unknown';
+
+            return {
+                ...ann,
+                move,
+                moveNumber: ann.moveNumber,
+                comment: ann.comment || '',
+                nags: ann.nags || [],
+                variations: ann.variations || []
+            };
+        });
+
+        game.annotations = processedAnnotations;
         await game.save();
 
         logger.info(`Successfully updated annotations for game ${req.params.id}`);

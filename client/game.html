@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Viewer - MyChessGames</title>
+    <title>Game Analysis • MyChessGames</title>
     <link rel="stylesheet" href="css/template.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/nav.css">
@@ -28,24 +28,142 @@
             color: #2e2e2c;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 1rem;
-        }
-
-        .game-container {
-            display: grid;
-            grid-template-columns: minmax(0, auto) 300px;
+        .analyse {
+            display: flex;
+            flex-direction: row;
             gap: 2rem;
             margin-top: 1rem;
         }
 
-        .board-container {
+        .analyse__side {
             display: flex;
             flex-direction: column;
             gap: 1rem;
-            min-width: 0;
+        }
+
+        .analyse__tools {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-menu {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .button {
+            padding: 0.5rem;
+            background: none;
+            border: none;
+            color: #2e2e2c;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .button:hover {
+            opacity: 1;
+        }
+
+        .button-empty {
+            padding: 0.5rem;
+            background: none;
+            border: none;
+            color: #2e2e2c;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .button-empty:hover {
+            opacity: 1;
+        }
+
+        .analyse__moves {
+            background: #f7f7f7;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+            overflow: hidden;
+        }
+
+        .moves-wrap {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            scrollbar-width: thin;
+            scrollbar-color: #ccc transparent;
+        }
+
+        .moves-wrap::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .moves-wrap::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .moves-wrap::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 3px;
+        }
+
+        .moves {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 1rem;
+            color: #2e2e2c;
+        }
+
+        .analyse__controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .analyse__controls__jumps {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .analyse__underboard {
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 0.9em;
+        }
+
+        .analyse__underboard__panels {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .computer-analysis {
+            background: #f7f7f7;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .move-annotation {
+            background: #f7f7f7;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .nag-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .analyse__board {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
 
         .board-wrapper {
@@ -59,313 +177,129 @@
             height: 100%;
         }
 
-        .board-tools {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .board-tool {
-            padding: 0.5rem;
-            background: none;
-            border: none;
-            color: #2e2e2c;
-            cursor: pointer;
-            opacity: 0.7;
-        }
-
-        .board-tool:hover {
-            opacity: 1;
-        }
-
-        .board-tool.active {
-            color: #3692e7;
-            opacity: 1;
-        }
-
-        .controls {
+        .board-resize {
             display: flex;
             justify-content: center;
-            gap: 0.5rem;
-            margin: 1rem 0;
-        }
-
-        .control-btn {
-            padding: 0.5rem 1rem;
-            background: none;
-            border: none;
-            color: #2e2e2c;
-            cursor: pointer;
-            opacity: 0.7;
-        }
-
-        .control-btn:hover {
-            opacity: 1;
-        }
-
-        .control-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        .moves-container {
-            background: #f7f7f7;
+            align-items: center;
             padding: 1rem;
-            border-radius: 4px;
-            border: 1px solid #e0e0e0;
+        }
+
+        .board-resize-handle {
+            width: 20px;
+            height: 20px;
+            background: #ccc;
+            border-radius: 50%;
+            cursor: se-resize;
+        }
+
+        .game-tags {
             display: flex;
             flex-direction: column;
-            height: 600px;
-            overflow: hidden;
+            gap: 1rem;
         }
 
-        .game-info {
-            padding-bottom: 0.5rem;
-            margin-bottom: 0.5rem;
-            border-bottom: 1px solid #e0e0e0;
-            font-size: 0.9em;
-        }
-
-        .moves-scroll {
-            flex: 1;
-            overflow-y: auto;
-            padding-right: 0.5rem;
-            scrollbar-width: thin;
-            scrollbar-color: #ccc transparent;
-        }
-
-        .moves-scroll::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .moves-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .moves-scroll::-webkit-scrollbar-thumb {
-            background-color: #ccc;
-            border-radius: 3px;
-        }
-
-        .move-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            font-size: 1rem;
-            color: #2e2e2c;
-        }
-
-        .move-tree {
-            margin-left: 1rem;
-            border-left: 2px solid #e0e0e0;
-            padding-left: 0.5rem;
-        }
-
-        .move-item {
-            margin: 0.25rem 0;
+        .game-tags__player {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            position: relative;
-        }
-
-        .move-number {
-            color: #666;
-            min-width: 2rem;
-        }
-
-        .move {
-            cursor: pointer;
-            padding: 0.1rem 0.3rem;
-            border-radius: 3px;
-            color: #2e2e2c;
-            position: relative;
-            user-select: none;
-        }
-
-        .move:hover {
-            background: #e0e0e0;
-        }
-
-        .move.active {
-            background: #3692e7;
-            color: #fff;
-        }
-
-        .variation-marker {
-            position: absolute;
-            left: -1rem;
-            top: 50%;
-            width: 0.5rem;
-            height: 2px;
-            background: #e0e0e0;
-        }
-
-        .move-comment {
-            color: #666;
-            margin-left: 2.5rem;
-            font-style: italic;
-            font-size: 0.9em;
-            padding: 0.25rem 0;
-            width: 100%;
-        }
-
-        /* Context Menu */
-        .context-menu {
-            position: fixed;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            padding: 0.5rem 0;
-            z-index: 1000;
-            min-width: 150px;
-        }
-
-        .context-menu-item {
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 0.5rem;
         }
 
-        .context-menu-item:hover {
-            background: #f0f0f0;
+        .player-name {
+            font-weight: bold;
         }
 
-        .context-menu-item i {
-            width: 16px;
-            text-align: center;
+        .player-rating {
+            font-size: 0.9em;
+            color: #666;
         }
 
-        /* Annotation Dialog */
-        .annotation-dialog {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 1rem;
-            border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 1100;
-            min-width: 300px;
-        }
-
-        .annotation-dialog textarea {
-            width: 100%;
-            min-height: 100px;
-            margin: 1rem 0;
-            padding: 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            resize: vertical;
-        }
-
-        .dialog-buttons {
+        .game-tags__info {
             display: flex;
-            justify-content: flex-end;
-            gap: 0.5rem;
+            justify-content: space-between;
         }
 
-        .dialog-btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
+        .game-tags__event {
+            font-size: 0.9em;
+            color: #666;
         }
 
-        .dialog-btn-primary {
-            background: #3692e7;
-            color: white;
-        }
-
-        .dialog-btn-secondary {
-            background: #e0e0e0;
-            color: #2e2e2c;
-        }
-
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1050;
+        .game-tags__date {
+            font-size: 0.9em;
+            color: #666;
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <div id="nav-placeholder"></div>
-
-    <!-- Main Content -->
-    <div class="container">
-        <div class="game-container">
-            <div class="board-container">
-                <div class="board-wrapper">
-                    <div id="chessground" class="cg-wrap">
-                        <cg-container>
-                            <cg-board></cg-board>
-                        </cg-container>
-                    </div>
-                </div>
-                <div class="board-tools">
-                    <button class="board-tool" id="flipBtn" title="Flip board">
+    <nav class="nav"></nav>
+    <main class="analyse">
+        <div class="analyse__side">
+            <div class="analyse__tools">
+                <section class="action-menu">
+                    <button class="button button-empty" id="flipBtn" title="Flip board">
                         <i class="fas fa-retweet"></i>
                     </button>
-                    <button class="board-tool active" id="editBtn" title="Make moves">
-                        <i class="fas fa-edit"></i>
+                    <button class="button button-empty" id="drawBtn" title="Draw arrows and circles">
+                        <i class="fas fa-pencil-alt"></i>
                     </button>
-                </div>
-                <div class="controls">
-                    <button class="control-btn" id="startBtn">
-                        <i class="fas fa-fast-backward"></i>
-                    </button>
-                    <button class="control-btn" id="prevBtn">
-                        <i class="fas fa-step-backward"></i>
-                    </button>
-                    <button class="control-btn" id="nextBtn">
-                        <i class="fas fa-step-forward"></i>
-                    </button>
-                    <button class="control-btn" id="endBtn">
-                        <i class="fas fa-fast-forward"></i>
-                    </button>
-                </div>
+                </section>
             </div>
-            <div class="moves-container">
-                <div class="game-info" id="gameInfo"></div>
-                <div class="moves-scroll">
-                    <ul id="moveList" class="move-list"></ul>
+            <section class="analyse__moves">
+                <div class="moves-wrap">
+                    <div id="moves" class="moves"></div>
                 </div>
+            </section>
+            <section class="analyse__controls">
+                <div class="analyse__controls__jumps">
+                    <button class="button" id="startBtn" title="Go to start">⏮</button>
+                    <button class="button" id="prevBtn" title="Previous move">⏪</button>
+                    <button class="button" id="nextBtn" title="Next move">⏩</button>
+                    <button class="button" id="endBtn" title="Go to end">⏭</button>
+                </div>
+            </section>
+            <section class="analyse__underboard">
+                <div class="analyse__underboard__panels">
+                    <div class="computer-analysis">
+                        <!-- Engine evaluation will go here -->
+                    </div>
+                    <div class="move-annotation">
+                        <textarea id="moveComment" placeholder="Add a comment to this move..." rows="2"></textarea>
+                        <div class="nag-buttons">
+                            <button class="button" data-symbol="!">!</button>
+                            <button class="button" data-symbol="?">?</button>
+                            <button class="button" data-symbol="!!">!!</button>
+                            <button class="button" data-symbol="??">??</button>
+                            <button class="button" data-symbol="!?">!?</button>
+                            <button class="button" data-symbol="?!">?!</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <div class="analyse__board main-board">
+            <div class="board-wrapper">
+                <div id="chessground" class="cg-wrap"></div>
             </div>
-        </div>
-    </div>
-
-    <!-- Context Menu Template -->
-    <div id="contextMenu" class="context-menu" style="display: none;">
-        <div class="context-menu-item" data-action="annotate">
-            <i class="fas fa-comment"></i> Add Annotation
-        </div>
-        <div class="context-menu-item" data-action="addVariation">
-            <i class="fas fa-code-branch"></i> Add Variation
-        </div>
-    </div>
-
-    <!-- Annotation Dialog Template -->
-    <div id="annotationDialog" style="display: none;">
-        <div class="overlay"></div>
-        <div class="annotation-dialog">
-            <h3>Add Annotation</h3>
-            <textarea id="annotationText" placeholder="Enter your annotation..."></textarea>
-            <div class="dialog-buttons">
-                <button class="dialog-btn dialog-btn-secondary" id="cancelAnnotation">Cancel</button>
-                <button class="dialog-btn dialog-btn-primary" id="saveAnnotation">Save</button>
+            <div class="board-resize">
+                <div class="board-resize-handle"></div>
             </div>
         </div>
-    </div>
+        <div class="analyse__tools">
+            <section class="game-tags">
+                <div class="game-tags__player white">
+                    <span class="player-name" id="whitePlayer"></span>
+                    <span class="player-rating" id="whiteRating"></span>
+                </div>
+                <div class="game-tags__player black">
+                    <span class="player-name" id="blackPlayer"></span>
+                    <span class="player-rating" id="blackRating"></span>
+                </div>
+                <div class="game-tags__info">
+                    <span class="game-tags__event" id="gameEvent"></span>
+                    <span class="game-tags__date" id="gameDate"></span>
+                </div>
+            </section>
+        </div>
+    </main>
 
     <script>
         // Load navigation and initialize game only if authenticated
@@ -380,7 +314,7 @@
             fetch('./partials/nav.html')
                 .then(response => response.text())
                 .then(data => {
-                    document.getElementById('nav-placeholder').innerHTML = data;
+                    document.querySelector('nav').innerHTML = data;
                 })
                 .catch(error => console.error('Error loading navigation:', error));
         });

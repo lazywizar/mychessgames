@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
 
+// Schema for shapes (arrows and circles)
+const shapeSchema = new mongoose.Schema({
+    brush: String,
+    orig: String,
+    dest: String,
+    opacity: Number
+}, { _id: false });
+
 // Schema for move annotations
 const annotationSchema = new mongoose.Schema({
     moveNumber: {
@@ -12,7 +20,8 @@ const annotationSchema = new mongoose.Schema({
     },
     comment: String,
     nags: [String], // Numeric Annotation Glyphs (e.g., !!, !?, ?!, etc.)
-    variations: [String]
+    variations: [String],
+    shapes: [shapeSchema]
 }, { _id: false });
 
 const gameSchema = new mongoose.Schema({
