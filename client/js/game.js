@@ -5,8 +5,17 @@ let currentMove = 0;
 let moves = [];
 let gameData = null;
 
+// Debug current URL and search params
+console.log('Current URL:', window.location.href);
+console.log('Search params:', window.location.search);
+console.log('Origin:', window.location.origin);
+
 // Get game ID from URL
-const gameId = new URLSearchParams(window.location.search).get('id');
+const urlParams = new URLSearchParams(window.location.search);
+console.log('URL Params object:', urlParams);
+console.log('All params:', Array.from(urlParams.entries()));
+
+const gameId = urlParams.get('id');
 console.log('Game ID from URL:', gameId);
 
 // Initialize
@@ -14,22 +23,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM loaded, initializing game page...');
     console.log('Current pathname:', window.location.pathname);
     console.log('Current URL:', window.location.href);
+    console.log('Search string:', window.location.search);
+    console.log('URL Params again:', new URLSearchParams(window.location.search));
+    
+    const baseUrl = window.location.origin;
     
     // Check authentication first
-    console.log('Checking authentication...');
-    const isAuth = requireAuth();
-    console.log('Authentication status:', isAuth);
-    
-    if (!isAuth) {
-        console.log('Authentication failed, redirecting to index');
-        window.location.href = 'index.html';
+    if (!requireAuth()) {
+        console.log('Not authenticated, redirecting to index');
+        window.location.assign(`${baseUrl}/index.html`);
         return;
     }
     
     // Validate game ID
     if (!gameId) {
-        console.log('No game ID found, redirecting to dashboard');
-        window.location.href = 'dashboard.html';
+        console.error('No game ID provided');
+        console.error('URL at error:', window.location.href);
+        alert('No game ID provided');
+        window.location.assign(`${baseUrl}/dashboard.html`);
+        return;
+    }
+
+    // Validate game ID format (MongoDB ObjectId is 24 hex characters)
+    if (!/^[0-9a-fA-F]{24}$/.test(gameId)) {
+        console.error('Invalid game ID format:', gameId);
+        alert('Invalid game ID format');
+        window.location.assign(`${baseUrl}/dashboard.html`);
         return;
     }
     
@@ -38,52 +57,66 @@ document.addEventListener('DOMContentLoaded', async () => {
         await initializeGame();
     } catch (error) {
         console.error('Failed to initialize game:', error);
-        // Don't redirect on error, just show the error
         alert('Error loading game: ' + error.message);
+        
+        // Only redirect on auth errors or if game is not found
+        if (error.message === 'Game not found' || 
+            error.message === 'Unauthorized' || 
+            error.message === 'Invalid game ID format') {
+            window.location.assign(`${baseUrl}/dashboard.html`);
+        }
     }
 });
 
 async function initializeGame() {
     console.log('Fetching game data from API...');
-    try {
-        const token = getToken();
-        console.log('Using token for auth:', token ? 'Token exists' : 'No token');
-        
-        const url = `${CONFIG.API_URL}/games/${gameId}`;
-        console.log('Making API request to:', url);
-        
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        console.log('API response status:', response.status);
-        
-        if (!response.ok) {
-            console.error('Error response:', response.status);
-            const errorData = await response.json().catch(() => ({}));
-            console.error('Error data:', errorData);
-            
-            if (response.status === 404) {
-                throw new Error('Game not found');
-            }
-            if (response.status === 401) {
-                console.log('Unauthorized, redirecting to index');
-                window.location.href = 'index.html';
-                return;
-            }
-            throw new Error(errorData.error || 'Failed to load game');
+    const token = getToken();
+    
+    if (!token) {
+        throw new Error('Unauthorized');
+    }
+    
+    const url = `${CONFIG.API_URL}/games/${gameId}`;
+    console.log('Making API request to:', url);
+    
+    const response = await fetch(url, {
+        headers: {
+            'Authorization': `Bearer ${token}`
         }
+    });
 
+    console.log('API response status:', response.status);
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response:', response.status, errorData);
+        
+        if (response.status === 404) {
+            throw new Error('Game not found');
+        }
+        if (response.status === 401) {
+            throw new Error('Unauthorized');
+        }
+        if (response.status === 400) {
+            throw new Error('Invalid game ID format');
+        }
+        throw new Error(errorData.message || 'Failed to load game');
+    }
+
+    try {
         gameData = await response.json();
         console.log('Game data received:', gameData);
-        
-        if (!gameData || !gameData.pgn) {
-            console.error('Invalid game data:', gameData);
-            throw new Error('Game data is invalid or missing PGN');
-        }
-        
+    } catch (error) {
+        console.error('Error parsing game data:', error);
+        throw new Error('Invalid game data received');
+    }
+    
+    if (!gameData || !gameData.pgn) {
+        console.error('Invalid game data:', gameData);
+        throw new Error('Game data is invalid or missing PGN');
+    }
+    
+    try {
         // Initialize chess.js with the PGN
         console.log('Initializing chess.js...');
         game = new Chess();
@@ -100,117 +133,94 @@ async function initializeGame() {
             pieceTheme: 'https://lichess1.org/assets/piece/cburnett/{piece}.svg'
         });
 
-        // Get all moves
-        moves = [];
-        let tempGame = new Chess();
-        const history = game.history({ verbose: true });
-        console.log('Move history:', history);
-        
-        history.forEach(move => {
-            tempGame.move(move);
-            moves.push({
-                san: move.san,
-                fen: tempGame.fen(),
-                moveNumber: Math.floor((moves.length + 2) / 2)
-            });
-        });
-
-        console.log('Displaying game info and moves...');
+        // Display game information and moves
         displayGameInfo();
         displayMoves();
-        loadCurrentMoveAnnotation();
-        
-        // Go to first position
-        goToMove(0);
+        updateControls();
         
         console.log('Game initialization complete');
     } catch (error) {
-        console.error('Error in initializeGame:', error);
-        throw error;
+        console.error('Error setting up game:', error);
+        throw new Error('Failed to set up game: ' + error.message);
     }
 }
 
 function displayGameInfo() {
-    const info = document.getElementById('gameInfo');
-    if (!info) {
-        console.error('Game info element not found');
-        return;
-    }
-    info.innerHTML = `
-        <h2>${gameData.white || 'Unknown'} vs ${gameData.black || 'Unknown'}</h2>
-        <p>${gameData.event || 'Game'} | ${gameData.date || 'Unknown date'}</p>
-        <p>Result: ${gameData.result || '*'}</p>
-        ${gameData.eco ? `<p>ECO: ${gameData.eco}</p>` : ''}
+    const gameInfo = document.getElementById('gameInfo');
+    if (!gameInfo || !gameData) return;
+
+    const { white, black, date, event, result } = gameData;
+    const whiteElo = gameData.whiteElo ? ` (${gameData.whiteElo})` : '';
+    const blackElo = gameData.blackElo ? ` (${gameData.blackElo})` : '';
+
+    gameInfo.innerHTML = `
+        <div style="margin-bottom: 1rem; color: #fff;">
+            <div>${white}${whiteElo} vs ${black}${blackElo}</div>
+            <div>${event || 'Unknown Event'}, ${date || 'Unknown Date'}</div>
+            <div>Result: ${result || '*'}</div>
+        </div>
     `;
 }
 
 function displayMoves() {
     const moveList = document.getElementById('moveList');
-    if (!moveList) {
-        console.error('Move list element not found');
-        return;
-    }
-    moveList.innerHTML = '';
+    if (!moveList || !game) return;
+
+    // Get moves from chess.js
+    moves = [];
+    const history = game.history({ verbose: true });
     
-    moves.forEach((move, index) => {
-        if (index % 2 === 0) {
-            const moveItem = document.createElement('li');
-            moveItem.className = 'move-item';
-            
-            const moveNumber = document.createElement('span');
-            moveNumber.className = 'move-number';
-            moveNumber.textContent = `${Math.floor(index/2 + 1)}.`;
-            
-            const whiteMove = document.createElement('span');
-            whiteMove.className = `move ${currentMove === index ? 'active' : ''}`;
-            whiteMove.textContent = move.san;
-            whiteMove.onclick = () => goToMove(index);
-            
-            moveItem.appendChild(moveNumber);
-            moveItem.appendChild(whiteMove);
-            
-            if (moves[index + 1]) {
-                const blackMove = document.createElement('span');
-                blackMove.className = `move ${currentMove === index + 1 ? 'active' : ''}`;
-                blackMove.textContent = moves[index + 1].san;
-                blackMove.onclick = () => goToMove(index + 1);
-                moveItem.appendChild(blackMove);
-            }
-            
-            // Add annotations if they exist
-            const annotation = gameData.annotations?.find(a => a.moveNumber === Math.floor(index/2 + 1));
-            if (annotation) {
-                if (annotation.nags?.length > 0) {
-                    const nag = document.createElement('span');
-                    nag.className = 'nag';
-                    nag.textContent = annotation.nags.join(' ');
-                    moveItem.appendChild(nag);
-                }
-                if (annotation.comment) {
-                    const comment = document.createElement('div');
-                    comment.className = 'comment';
-                    comment.textContent = annotation.comment;
-                    moveItem.appendChild(comment);
-                }
-            }
-            
-            moveList.appendChild(moveItem);
+    let currentPosition = new Chess();
+    let moveNumber = 1;
+    let html = '';
+
+    for (let i = 0; i < history.length; i++) {
+        const move = history[i];
+        const san = move.san;
+        
+        // Store position after this move
+        currentPosition.move(move);
+        const fen = currentPosition.fen();
+        moves.push({ san, fen });
+
+        if (i % 2 === 0) {
+            html += `<li class="move-item" data-move="${i}">`;
+            html += `<span class="move-number">${moveNumber}.</span>`;
+            html += `<span class="move" data-move="${i}">${san}</span>`;
+        } else {
+            html += `<span class="move" data-move="${i}">${san}</span>`;
+            moveNumber++;
+            html += '</li>';
         }
+    }
+
+    // Close the last li if we have an odd number of moves
+    if (history.length % 2 !== 0) {
+        html += '</li>';
+    }
+
+    moveList.innerHTML = html;
+
+    // Add click handlers to moves
+    const moveElements = moveList.querySelectorAll('.move');
+    moveElements.forEach(moveEl => {
+        moveEl.addEventListener('click', () => {
+            const moveIndex = parseInt(moveEl.dataset.move);
+            goToMove(moveIndex);
+        });
     });
 }
 
 function goToMove(moveIndex) {
-    if (!board) {
-        console.error('Chessboard not initialized');
-        return;
-    }
-    
-    if (moveIndex < 0) moveIndex = 0;
-    if (moveIndex > moves.length - 1) moveIndex = moves.length - 1;
-    
+    if (!board || !game || moveIndex < 0 || moveIndex >= moves.length) return;
+
     currentMove = moveIndex;
     board.position(moves[moveIndex].fen);
-    displayMoves();
+
+    // Update active move highlight
+    document.querySelectorAll('.move').forEach(m => m.classList.remove('active'));
+    document.querySelector(`.move[data-move="${moveIndex}"]`).classList.add('active');
+
     updateControls();
     loadCurrentMoveAnnotation();
 }
@@ -220,76 +230,63 @@ function updateControls() {
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     const endBtn = document.getElementById('endBtn');
-    
-    if (!startBtn || !prevBtn || !nextBtn || !endBtn) {
-        console.error('Control buttons not found');
-        return;
-    }
-    
-    startBtn.disabled = currentMove === 0;
-    prevBtn.disabled = currentMove === 0;
-    nextBtn.disabled = currentMove === moves.length - 1;
-    endBtn.disabled = currentMove === moves.length - 1;
+
+    if (startBtn) startBtn.disabled = currentMove === 0;
+    if (prevBtn) prevBtn.disabled = currentMove === 0;
+    if (nextBtn) nextBtn.disabled = currentMove === moves.length - 1;
+    if (endBtn) endBtn.disabled = currentMove === moves.length - 1;
 }
 
 function loadCurrentMoveAnnotation() {
+    if (!gameData || !gameData.annotations) return;
+
     const moveComment = document.getElementById('moveComment');
     const moveNag = document.getElementById('moveNag');
     
-    if (!moveComment || !moveNag) {
-        console.error('Annotation elements not found');
-        return;
-    }
+    const annotation = gameData.annotations[currentMove];
     
-    const moveNumber = Math.floor(currentMove / 2) + 1;
-    const annotation = gameData.annotations?.find(a => a.moveNumber === moveNumber);
-    
-    moveComment.value = annotation?.comment || '';
-    moveNag.value = annotation?.nags?.[0] || '';
+    if (moveComment) moveComment.value = annotation?.comment || '';
+    if (moveNag) moveNag.value = annotation?.nag || '';
 }
 
 async function saveAnnotation() {
+    const moveComment = document.getElementById('moveComment');
+    const moveNag = document.getElementById('moveNag');
+    
+    if (!moveComment || !moveNag || !gameData) return;
+
+    const annotation = {
+        comment: moveComment.value.trim(),
+        nag: moveNag.value
+    };
+
     try {
-        const moveNumber = Math.floor(currentMove / 2) + 1;
-        const comment = document.getElementById('moveComment')?.value || '';
-        const nag = document.getElementById('moveNag')?.value || '';
-        
-        // Update or create annotation
-        let annotations = gameData.annotations || [];
-        let annotation = annotations.find(a => a.moveNumber === moveNumber);
-        
-        if (annotation) {
-            annotation.comment = comment;
-            annotation.nags = nag ? [nag] : [];
-        } else {
-            annotations.push({
-                moveNumber,
-                move: moves[currentMove].san,
-                comment,
-                nags: nag ? [nag] : [],
-                variations: []
-            });
-        }
-        
-        console.log('Saving annotations:', annotations);
-        const response = await fetch(`${CONFIG.API_URL}/games/${gameId}/annotations`, {
-            method: 'PATCH',
+        const response = await fetch(`${CONFIG.API_URL}/games/${gameId}/annotations/${currentMove}`, {
+            method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${getToken()}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ annotations })
+            body: JSON.stringify(annotation)
         });
 
         if (!response.ok) {
-            throw new Error('Failed to save annotation');
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to save annotation');
         }
 
-        gameData = await response.json();
+        // Update local game data
+        if (!gameData.annotations) gameData.annotations = {};
+        gameData.annotations[currentMove] = annotation;
+
+        // Update display
         displayMoves();
+        goToMove(currentMove);
+
+        alert('Annotation saved successfully');
     } catch (error) {
         console.error('Error saving annotation:', error);
-        alert('Error saving annotation');
+        alert('Error saving annotation: ' + error.message);
     }
 }
 
@@ -299,11 +296,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     const endBtn = document.getElementById('endBtn');
-    const saveAnnotationBtn = document.getElementById('saveAnnotation');
-    
+    const saveBtn = document.getElementById('saveAnnotation');
+
     if (startBtn) startBtn.addEventListener('click', () => goToMove(0));
     if (prevBtn) prevBtn.addEventListener('click', () => goToMove(currentMove - 1));
     if (nextBtn) nextBtn.addEventListener('click', () => goToMove(currentMove + 1));
     if (endBtn) endBtn.addEventListener('click', () => goToMove(moves.length - 1));
-    if (saveAnnotationBtn) saveAnnotationBtn.addEventListener('click', saveAnnotation);
+    if (saveBtn) saveBtn.addEventListener('click', saveAnnotation);
 });

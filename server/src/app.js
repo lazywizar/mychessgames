@@ -41,6 +41,47 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
+// Handle SPA routes - this should be after API routes but before error handling
+app.get('/game', (req, res) => {
+    const gameId = req.query.id;
+    logger.info(`Game route hit with ID: ${gameId}`);
+    
+    if (!gameId) {
+        logger.warn('No game ID provided, redirecting to dashboard');
+        return res.redirect('/dashboard');
+    }
+    
+    // Validate MongoDB ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(gameId)) {
+        logger.warn(`Invalid game ID format: ${gameId}`);
+        return res.redirect('/dashboard');
+    }
+    
+    res.sendFile(path.join(__dirname, '../../client/game.html'));
+});
+
+app.get('/game.html', (req, res) => {
+    res.redirect(`/game${req.url.substring(req.url.indexOf('?'))}`);
+});
+
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../client/dashboard.html'));
+});
+
+app.get('/dashboard.html', (req, res) => {
+    res.redirect('/dashboard');
+});
+
+app.get(['/', '/index', '/index.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, '../../client/index.html'));
+});
+
+// Catch-all route for any other requests
+app.get('*', (req, res) => {
+    logger.warn(`404 - Not found: ${req.originalUrl}`);
+    res.redirect('/');
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     logger.error('Unhandled error:', err);

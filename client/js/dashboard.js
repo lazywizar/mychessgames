@@ -70,12 +70,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!gamesTableBody) return;
 
         gamesTableBody.innerHTML = games.map(game => {
-            //console.log('Processing game:', game);
             const gameId = game.id || game._id;  // Try both id formats
-            console.log('Game ID used for link:', gameId);
+            console.log('Game ID:', gameId);
+            
+            // Ensure the game has an ID before creating the row
+            if (!gameId) {
+                console.error('Game missing ID:', game);
+                return '';
+            }
 
             return `
-                <tr class="game-row" data-id="${gameId}" onclick="handleGameClick(event, '${gameId}')">
+                <tr class="game-row" data-id="${gameId}">
                     <td>${game.date || '-'}</td>
                     <td>${game.white || '-'}${game.whiteElo ? ` (${game.whiteElo})` : ''}</td>
                     <td>${game.black || '-'}${game.blackElo ? ` (${game.blackElo})` : ''}</td>
@@ -86,62 +91,55 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }).join('');
 
-        // Add direct click handlers to each row
+        // Add click handlers to each row
         const rows = gamesTableBody.querySelectorAll('.game-row');
         rows.forEach(row => {
-            row.addEventListener('click', (e) => {
-                console.log('Row clicked directly');
-                console.log('Row dataset:', row.dataset);
-                console.log('Row data-id:', row.getAttribute('data-id'));
+            row.addEventListener('click', async (e) => {
                 const gameId = row.getAttribute('data-id');
-                handleGameClick(e, gameId);
+                console.log('Row clicked, game ID:', gameId);
+                console.log('Row element:', row);
+                console.log('Row dataset:', row.dataset);
+                
+                if (!gameId) {
+                    console.error('No game ID found in row');
+                    return;
+                }
+
+                console.log('Waiting 10 seconds before navigation...');
+                const baseUrl = window.location.origin;
+                const gameUrl = `${baseUrl}/game?id=${gameId}`;
+                console.log('Will navigate to:', gameUrl);
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                console.log('Navigation starting now...');
+
+                // Navigate to game page with the game ID using assign
+                window.location.assign(gameUrl);
             });
         });
     }
 
-    // Handle game clicks
-    window.handleGameClick = function(event, gameId) {
-        event.preventDefault();
-        console.log('handleGameClick called');
-        console.log('Event:', event);
-        console.log('Game ID:', gameId);
-        console.log('Current URL:', window.location.href);
-        console.log('Navigating to:', `game.html?id=${gameId}`);
-
-        // Add a small delay to ensure logs are visible
-        setTimeout(() => {
-            window.location.href = `game.html?id=${gameId}`;
-        }, 100);
-    };
-
-    async function handleFileDrop(e) {
+    function handleFileDrop(e) {
         e.preventDefault();
-        if (dropZone) dropZone.classList.remove('dragover');
-
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            await uploadFile(files[0]);
-        }
+        dropZone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) uploadFile(file);
     }
 
-    async function handleFileSelect(e) {
-        const files = e.target.files;
-        if (files.length > 0) {
-            await uploadFile(files[0]);
-        }
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) uploadFile(file);
     }
 
     async function uploadFile(file) {
-        if (!file.name.endsWith('.pgn')) {
+        if (!file || !file.name.toLowerCase().endsWith('.pgn')) {
             alert('Please upload a PGN file');
             return;
         }
 
         const formData = new FormData();
-        formData.append('pgnFile', file);
+        formData.append('pgn', file);
 
         try {
-            console.log('Uploading file...');
             const response = await fetch(`${CONFIG.API_URL}/games/upload`, {
                 method: 'POST',
                 headers: {
@@ -150,16 +148,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: formData
             });
 
-            if (!response.ok) throw new Error('Upload failed');
+            const data = await response.json();
 
-            const result = await response.json();
-            console.log('Upload result:', result);
-
-            if (modal) modal.style.display = 'none';
-            loadGames();
+            if (response.ok) {
+                modal.style.display = 'none';
+                loadGames();  // Reload games list
+            } else {
+                throw new Error(data.message || 'Upload failed');
+            }
         } catch (error) {
-            console.error('Error uploading file:', error);
-            alert('Error uploading file');
+            console.error('Upload error:', error);
+            alert(error.message || 'Error uploading file');
         }
     }
 
