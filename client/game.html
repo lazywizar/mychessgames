@@ -105,71 +105,93 @@
             overflow: hidden;
         }
 
+        .moves-container.analyse__tools {
+            background: #262421;
+            color: #bababa;
+            font-size: 14px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
         .game-info {
-            padding-bottom: 0.5rem;
-            margin-bottom: 0.5rem;
-            border-bottom: 1px solid #e0e0e0;
-            font-size: 0.9em;
+            padding: 0.7em;
+            border-bottom: 1px solid #404040;
+            background: #302e2c;
         }
 
         .moves-scroll {
             flex: 1;
             overflow-y: auto;
-            padding-right: 0.5rem;
             scrollbar-width: thin;
-            scrollbar-color: #ccc transparent;
+            scrollbar-color: #404040 #262421;
         }
 
         .moves-scroll::-webkit-scrollbar {
-            width: 6px;
+            width: 8px;
         }
 
         .moves-scroll::-webkit-scrollbar-track {
-            background: transparent;
+            background: #262421;
         }
 
         .moves-scroll::-webkit-scrollbar-thumb {
-            background-color: #ccc;
-            border-radius: 3px;
+            background: #404040;
+            border-radius: 4px;
+        }
+
+        .moves.analyse__moves {
+            padding: 0.7em;
+        }
+
+        .moves-wrap {
+            line-height: 1.7;
         }
 
         .move-list {
-            list-style: none;
             padding: 0;
             margin: 0;
-            font-size: 1rem;
-            color: #2e2e2c;
+            list-style: none;
         }
 
-        .move-tree {
-            margin-left: 1rem;
-            border-left: 2px solid #e0e0e0;
-            padding-left: 0.5rem;
+        .move-line {
+            display: grid;
+            grid-template-columns: 3em 1fr 1fr;
+            gap: 0.5em;
+            padding: 0.2em 0.5em;
+            align-items: baseline;
+            border-radius: 3px;
         }
 
-        .move-item {
-            margin: 0.25rem 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            position: relative;
+        .move-line:hover {
+            background: #2d2b29;
         }
 
         .move-number {
             color: #666;
-            min-width: 2rem;
+            text-align: right;
+            padding-right: 0.5em;
+        }
+
+        .move-cell {
+            position: relative;
+            min-height: 1.5em;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5em;
         }
 
         .move {
             cursor: pointer;
-            padding: 0.1rem 0.3rem;
+            padding: 0.1em 0.3em;
             border-radius: 3px;
-            color: #2e2e2c;
-            position: relative;
+            color: #bababa;
+            white-space: nowrap;
         }
 
         .move:hover {
-            background: #e0e0e0;
+            background: #3d3d3d;
+            color: #fff;
         }
 
         .move.active {
@@ -177,22 +199,27 @@
             color: #fff;
         }
 
-        .variation-marker {
-            position: absolute;
-            left: -1rem;
-            top: 50%;
-            width: 0.5rem;
-            height: 2px;
-            background: #e0e0e0;
+        .move-comment {
+            color: #89a358;
+            font-style: italic;
+            margin-left: 0.5em;
         }
 
-        .move-comment {
-            color: #666;
-            margin-left: 2.5rem;
-            font-style: italic;
-            font-size: 0.9em;
-            padding: 0.25rem 0;
-            width: 100%;
+        .move-tree {
+            margin: 0.2em 0 0.2em 3em;
+            padding-left: 1em;
+            border-left: 2px solid #404040;
+            color: #808080;
+        }
+
+        .variation-line {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2em;
+        }
+
+        .variation-line .move-line {
+            opacity: 0.8;
         }
 
         .quick-symbols {
@@ -305,10 +332,14 @@
                     <textarea id="moveAnnotation" class="annotation-input" placeholder="Add annotation for current move..."></textarea>
                 </div>
             </div>
-            <div class="moves-container">
+            <div class="moves-container analyse__tools">
                 <div class="game-info" id="gameInfo"></div>
                 <div class="moves-scroll">
-                    <ul id="moveList" class="move-list"></ul>
+                    <div class="moves analyse__moves">
+                        <div class="moves-wrap">
+                            <div id="moveList" class="move-list"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

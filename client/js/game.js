@@ -567,126 +567,114 @@ function displayMoves() {
         btn.dataset.selected = (currentAnnotation?.nag === btn.dataset.symbol) ? 'true' : 'false';
     });
 
+    let currentLine = null;
+
     for (let i = 0; i < moves.length; i++) {
         const moveNumber = Math.floor(i / 2) + 1;
         const isWhite = i % 2 === 0;
-
+        
         if (isWhite) {
-            const li = document.createElement('li');
-            li.className = 'move-item';
-
-            const moveNumberSpan = document.createElement('span');
-            moveNumberSpan.className = 'move-number';
-            moveNumberSpan.textContent = `${moveNumber}.`;
-            li.appendChild(moveNumberSpan);
-
-            const whiteMove = createMoveElement(moves[i], i);
-            li.appendChild(whiteMove);
-
+            // Create new line for each pair of moves
+            currentLine = document.createElement('div');
+            currentLine.className = 'move-line';
+            
+            // Add move number
+            const moveNumberCell = document.createElement('div');
+            moveNumberCell.className = 'move-number';
+            moveNumberCell.textContent = `${moveNumber}.`;
+            currentLine.appendChild(moveNumberCell);
+            
+            // Add white move cell
+            const whiteMoveCell = document.createElement('div');
+            whiteMoveCell.className = 'move-cell white';
+            const whiteMove = createMoveElement(moves[i], i, false);
+            whiteMoveCell.appendChild(whiteMove);
+            
             // Add comment if exists
             if (annotations[i]?.comment) {
-                const comment = document.createElement('div');
+                const comment = document.createElement('span');
                 comment.className = 'move-comment';
                 comment.textContent = annotations[i].comment;
-                li.appendChild(comment);
+                whiteMoveCell.appendChild(comment);
             }
-
-            // Add variations if they exist
-            if (variations[i]) {
-                console.log('Found variations for move', i, ':', variations[i]);
-                variations[i].forEach(variation => {
-                    console.log('Processing variation:', variation);
-                    const variationDiv = document.createElement('div');
-                    variationDiv.className = 'move-tree';
-                    
-                    const marker = document.createElement('div');
-                    marker.className = 'variation-marker';
-                    variationDiv.appendChild(marker);
-
-                    // Show variation moves
-                    const variationMoves = document.createElement('div');
-                    variationMoves.className = 'variation-moves';
-                    
-                    // Add move number if it's white's move
-                    if (isWhite) {
-                        const varMoveNumber = document.createElement('span');
-                        varMoveNumber.className = 'move-number';
-                        varMoveNumber.textContent = `${moveNumber}.`;
-                        variationMoves.appendChild(varMoveNumber);
-                    }
-                    
-                    // Add the variation moves
-                    if (variation.variation && variation.variation.length > 0) {
-                        console.log('Adding variation moves:', variation.variation);
-                        variation.variation.forEach((move, idx) => {
-                            if (idx > 0) {
-                                // Add move numbers for black's moves in variations
-                                if ((idx % 2) === 0) {
-                                    const varMoveNumber = document.createElement('span');
-                                    varMoveNumber.className = 'move-number';
-                                    varMoveNumber.textContent = `${moveNumber + Math.floor(idx/2)}.`;
-                                    variationMoves.appendChild(varMoveNumber);
-                                }
-                            }
-                            const moveSpan = createMoveElement(move, i, true);
-                            variationMoves.appendChild(moveSpan);
-                        });
-                    }
-
-                    variationDiv.appendChild(variationMoves);
-                    li.appendChild(variationDiv);
-                });
-            }
-
-            moveList.appendChild(li);
+            
+            currentLine.appendChild(whiteMoveCell);
+            
+            // Create empty black move cell
+            const blackMoveCell = document.createElement('div');
+            blackMoveCell.className = 'move-cell black';
+            currentLine.appendChild(blackMoveCell);
+            
+            moveList.appendChild(currentLine);
         } else {
-            const li = moveList.lastElementChild;
-            const blackMove = createMoveElement(moves[i], i);
-            li.appendChild(blackMove);
-
-            // Add comment if exists
-            if (annotations[i]?.comment) {
-                const comment = document.createElement('div');
-                comment.className = 'move-comment';
-                comment.textContent = annotations[i].comment;
-                li.appendChild(comment);
+            // Add black move to the current line
+            if (currentLine) {
+                const blackMoveCell = currentLine.querySelector('.move-cell.black');
+                const blackMove = createMoveElement(moves[i], i, false);
+                blackMoveCell.appendChild(blackMove);
+                
+                // Add comment if exists
+                if (annotations[i]?.comment) {
+                    const comment = document.createElement('span');
+                    comment.className = 'move-comment';
+                    comment.textContent = annotations[i].comment;
+                    blackMoveCell.appendChild(comment);
+                }
             }
+        }
 
-            // Add variations if they exist
-            if (variations[i]) {
-                console.log('Found variations for move', i, ':', variations[i]);
-                variations[i].forEach(variation => {
-                    console.log('Processing variation:', variation);
-                    const variationDiv = document.createElement('div');
-                    variationDiv.className = 'move-tree';
+        // Add variations if they exist
+        if (variations[i]) {
+            variations[i].forEach(variation => {
+                const variationDiv = document.createElement('div');
+                variationDiv.className = 'move-tree';
+                
+                // Create a line for the variation
+                const variationLine = document.createElement('div');
+                variationLine.className = 'variation-line';
+                
+                if (variation.variation && variation.variation.length > 0) {
+                    let varCurrentLine = null;
                     
-                    const marker = document.createElement('div');
-                    marker.className = 'variation-marker';
-                    variationDiv.appendChild(marker);
+                    variation.variation.forEach((move, idx) => {
+                        const varMoveNumber = Math.floor((i + idx) / 2) + 1;
+                        const isVarWhite = (i + idx) % 2 === 0;
+                        
+                        if (isVarWhite) {
+                            varCurrentLine = document.createElement('div');
+                            varCurrentLine.className = 'move-line';
+                            
+                            // Add variation move number
+                            const varNumberCell = document.createElement('div');
+                            varNumberCell.className = 'move-number';
+                            varNumberCell.textContent = `${varMoveNumber}.`;
+                            varCurrentLine.appendChild(varNumberCell);
+                            
+                            // Add white move
+                            const varWhiteCell = document.createElement('div');
+                            varWhiteCell.className = 'move-cell white';
+                            const varWhiteMove = createMoveElement(move, i, true);
+                            varWhiteCell.appendChild(varWhiteMove);
+                            varCurrentLine.appendChild(varWhiteCell);
+                            
+                            // Add empty black cell
+                            const varBlackCell = document.createElement('div');
+                            varBlackCell.className = 'move-cell black';
+                            varCurrentLine.appendChild(varBlackCell);
+                            
+                            variationLine.appendChild(varCurrentLine);
+                        } else if (varCurrentLine) {
+                            // Add black move to current variation line
+                            const varBlackCell = varCurrentLine.querySelector('.move-cell.black');
+                            const varBlackMove = createMoveElement(move, i, true);
+                            varBlackCell.appendChild(varBlackMove);
+                        }
+                    });
+                }
 
-                    // Show variation moves
-                    const variationMoves = document.createElement('div');
-                    variationMoves.className = 'variation-moves';
-                    
-                    // Add the variation moves
-                    if (variation.variation && variation.variation.length > 0) {
-                        console.log('Adding variation moves:', variation.variation);
-                        variation.variation.forEach((move, idx) => {
-                            if (idx > 0 && (idx % 2) === 0) {
-                                const varMoveNumber = document.createElement('span');
-                                varMoveNumber.className = 'move-number';
-                                varMoveNumber.textContent = `${moveNumber + Math.floor(idx/2)}.`;
-                                variationMoves.appendChild(varMoveNumber);
-                            }
-                            const moveSpan = createMoveElement(move, i, true);
-                            variationMoves.appendChild(moveSpan);
-                        });
-                    }
-
-                    variationDiv.appendChild(variationMoves);
-                    li.appendChild(variationDiv);
-                });
-            }
+                variationDiv.appendChild(variationLine);
+                moveList.appendChild(variationDiv);
+            });
         }
     }
 
@@ -697,107 +685,32 @@ function displayMoves() {
     }
 }
 
-// Add some CSS for better variation display
-const style = document.createElement('style');
-style.textContent = `
-.move-tree {
-    margin-left: 1.5em;
-    position: relative;
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-}
-
-.variation-marker {
-    position: absolute;
-    left: -1em;
-    top: 0.5em;
-    width: 0.5em;
-    height: 0.5em;
-    border: 1px solid #333;
-    border-radius: 50%;
-    background-color: #ddd;
-}
-
-.variation-moves {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: 0.5em;
-    color: #333;  /* Darker color for better visibility */
-}
-
-.variation-moves .move-number {
-    color: #666;  /* Darker color for move numbers */
-}
-
-.variation-moves .move {
-    color: #444;  /* Even darker for the actual moves */
-    cursor: pointer;
-}
-
-.variation-moves .move:hover {
-    color: #000;
-    background-color: #f0f0f0;
-    border-radius: 3px;
-}
-
-.move.active {
-    background: #e0e0e0;  /* Darker background for active move */
-    border-radius: 3px;
-    padding: 2px 4px;
-    margin: -2px -4px;
-    color: #000;
-}
-`;
-document.head.appendChild(style);
-
 function createMoveElement(move, index, isVariation = false) {
-    const span = document.createElement('span');
-    span.className = `move${index === currentMove ? ' active' : ''}`;
-    span.textContent = move;
+    const moveElement = document.createElement('span');
+    moveElement.classList.add('move');
+    if (index === currentMove) {
+        moveElement.classList.add('active');
+    }
+    
+    moveElement.textContent = move;
 
-    // Add NAG if exists
-    const annotation = annotations[index];
-    if (annotation?.nag) {
-        span.textContent += ' ' + annotation.nag;
+    // Add annotation if exists
+    if (annotations[index]) {
+        if (annotations[index].nag) {
+            const nag = document.createElement('span');
+            nag.classList.add('move-nag');
+            nag.textContent = ' ' + annotations[index].nag;
+            moveElement.appendChild(nag);
+        }
     }
 
-    // Add variation tools
-    if (!isVariation) {
-        const tools = document.createElement('div');
-        tools.className = 'tools-container';
-        
-        const addVariation = document.createElement('button');
-        addVariation.className = 'move-tool';
-        addVariation.textContent = '+';
-        addVariation.title = 'Add variation';
-        addVariation.onclick = (e) => {
-            e.stopPropagation();
-            currentMove = index;
-            updatePosition();
-            isEditMode = true;
-            document.getElementById('editBtn').classList.add('active');
-            board.draggable = true;
-        };
-        
-        tools.appendChild(addVariation);
-        span.appendChild(tools);
-    }
-
-    // Add click handler
-    span.addEventListener('click', () => {
+    moveElement.addEventListener('click', () => {
         currentMove = index;
         updatePosition();
         displayMoves();
-
-        // Load annotation
-        const annotation = annotations[currentMove];
-        const annotationInput = document.getElementById('moveAnnotation');
-        if (annotationInput) {
-            annotationInput.value = annotation?.comment || '';
-        }
     });
 
-    return span;
+    return moveElement;
 }
 
 function updatePosition() {
@@ -851,3 +764,56 @@ document.getElementById('endBtn').addEventListener('click', () => {
     updatePosition();
     displayMoves();
 });
+
+// Add some CSS for better variation display
+const style = document.createElement('style');
+style.textContent = `
+.move-tree {
+    margin-left: 1.5em;
+    position: relative;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.variation-marker {
+    position: absolute;
+    left: -1em;
+    top: 0.5em;
+    width: 0.5em;
+    height: 0.5em;
+    border: 1px solid #333;
+    border-radius: 50%;
+    background-color: #ddd;
+}
+
+.variation-line {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    color: #333;  /* Darker color for better visibility */
+}
+
+.variation-line .move-number {
+    color: #666;  /* Darker color for move numbers */
+}
+
+.variation-line .move {
+    color: #444;  /* Even darker for the actual moves */
+    cursor: pointer;
+}
+
+.variation-line .move:hover {
+    color: #000;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+}
+
+.move.active {
+    background: #e0e0e0;  /* Darker background for active move */
+    border-radius: 3px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    color: #000;
+}
+`;
+document.head.appendChild(style);
