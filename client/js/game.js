@@ -530,6 +530,40 @@ function setupAnnotationHandlers() {
     });
 }
 
+// Add keyboard navigation
+document.addEventListener('keydown', (event) => {
+    switch (event.key) {
+        case 'ArrowRight':
+            // Next move
+            if (currentMove < moves.length - 1) {
+                currentMove++;
+                updatePosition();
+                displayMoves();
+            }
+            break;
+        case 'ArrowLeft':
+            // Previous move
+            if (currentMove >= 0) {
+                currentMove--;
+                updatePosition();
+                displayMoves();
+            }
+            break;
+        case 'Home':
+            // Go to start
+            currentMove = -1;
+            updatePosition();
+            displayMoves();
+            break;
+        case 'End':
+            // Go to end
+            currentMove = moves.length - 1;
+            updatePosition();
+            displayMoves();
+            break;
+    }
+});
+
 function displayGameInfo() {
     const gameInfo = document.getElementById('gameInfo');
     if (!gameInfo || !gameData) return;
