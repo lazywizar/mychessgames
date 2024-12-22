@@ -188,12 +188,13 @@ async function initializeGame() {
         console.log('Final processed variations:', variations);
         console.log('Final processed annotations:', annotations);
 
-        currentMove = moves.length - 1;
+        // Initialize at the starting position
+        currentMove = -1;
 
         // Initialize the board
         console.log('Initializing chessboard...');
         board = Chessboard('board', {
-            position: game.fen(),
+            position: 'start',  // Set to starting position
             draggable: true,
             onDrop: handleMove,
             onDragStart: onDragStart,
