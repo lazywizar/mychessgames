@@ -6,13 +6,24 @@
     <title>MyChessGames</title>
     <link rel="stylesheet" href="css/template.css">
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
         <div class="auth-container">
+            <div class="welcome-text" style="text-align: center; margin-bottom: 2rem;">
+                <i class="fas fa-chess-knight" style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+                <h1 style="margin: 0.5rem 0; font-size: 1.5rem; color: var(--text-primary);">Welcome to MyChessGames</h1>
+                <p style="color: var(--text-secondary); font-size: 0.875rem;">Your personal chess game library and analysis platform</p>
+            </div>
+            
             <div class="auth-tabs">
-                <button class="tab-btn active" data-tab="login">Login</button>
-                <button class="tab-btn" data-tab="register">Register</button>
+                <button class="tab-btn active" data-tab="login">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+                <button class="tab-btn" data-tab="register">
+                    <i class="fas fa-user-plus"></i> Register
+                </button>
             </div>
 
             <form id="loginForm" class="auth-form">
@@ -22,7 +33,9 @@
                 <div class="form-group">
                     <input type="password" id="loginPassword" placeholder="Password" required>
                 </div>
-                <button type="submit">Login</button>
+                <button type="submit">
+                    <i class="fas fa-arrow-right"></i> Login
+                </button>
             </form>
 
             <form id="registerForm" class="auth-form hidden">
@@ -35,7 +48,9 @@
                 <div class="form-group">
                     <input type="password" id="registerPassword" placeholder="Password" required>
                 </div>
-                <button type="submit">Register</button>
+                <button type="submit">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
             </form>
         </div>
     </div>

@@ -1,6 +1,5 @@
 # MyChessGames
-
-An online service to store and analyze your chess games from various platforms like chess.com and lichess.org.
+An online service to store all your chess games, analyze them, and review them. It helps bring all games from chess.com, lichess.org and over the board to one place for easy access and analysis.
 
 ## Project Structure
 
