@@ -7,10 +7,18 @@
     <link rel="stylesheet" href="css/template.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/nav.css">
-    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="css/chessground.base.css">
+    <link rel="stylesheet" href="css/chessground.brown.css">
+    <link rel="stylesheet" href="css/chessground.cburnett.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="./js/config.js"></script>
     <script src="./js/auth.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js" defer></script>
+    <script src="./libs/chessground.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" defer></script>
+    <script src="./js/nav.js" defer></script>
+    <script src="./js/game.js" defer></script>
     <style>
         body {
             font-family: 'Noto Sans', Sans-Serif;
@@ -40,9 +48,15 @@
             min-width: 0;
         }
 
-        #board {
+        .board-wrapper {
             width: 600px;
-            margin-bottom: 0.5rem;
+            height: 600px;
+            position: relative;
+        }
+
+        #chessground {
+            width: 100%;
+            height: 100%;
         }
 
         .board-tools {
@@ -166,6 +180,7 @@
             border-radius: 3px;
             color: #2e2e2c;
             position: relative;
+            user-select: none;
         }
 
         .move:hover {
@@ -195,74 +210,90 @@
             width: 100%;
         }
 
-        .quick-symbols {
-            display: flex;
-            gap: 0.5rem;
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             padding: 0.5rem 0;
-            margin: 0.5rem 0;
-            flex-wrap: wrap;
-            justify-content: center;
+            z-index: 1000;
+            min-width: 150px;
         }
 
-        .symbol-btn {
-            padding: 0.25rem 0.5rem;
-            min-width: 1.5rem;
-            background: none;
-            border: none;
-            color: #2e2e2c;
+        .context-menu-item {
+            padding: 0.5rem 1rem;
             cursor: pointer;
-            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .context-menu-item:hover {
+            background: #f0f0f0;
+        }
+
+        .context-menu-item i {
+            width: 16px;
             text-align: center;
         }
 
-        .symbol-btn:hover {
-            color: #666;
-        }
-
-        .symbol-btn[data-selected="true"] {
-            color: #3692e7;
-            font-weight: bold;
-        }
-
-        .annotation-container {
-            margin-top: 1rem;
-        }
-
-        .annotation-input {
-            background: #fff;
-            border: 1px solid #ccc;
-            color: #2e2e2c;
-            padding: 0.5rem;
+        /* Annotation Dialog */
+        .annotation-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 1rem;
             border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1100;
+            min-width: 300px;
+        }
+
+        .annotation-dialog textarea {
             width: 100%;
             min-height: 100px;
+            margin: 1rem 0;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             resize: vertical;
-            font-family: inherit;
         }
 
-        .tools-container {
-            position: absolute;
-            top: 0;
-            right: -2rem;
-            display: none;
+        .dialog-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
         }
 
-        .move:hover .tools-container {
-            display: block;
-        }
-
-        .move-tool {
-            padding: 0.2rem;
-            background: none;
+        .dialog-btn {
+            padding: 0.5rem 1rem;
             border: none;
-            color: #666;
+            border-radius: 4px;
             cursor: pointer;
-            opacity: 0.7;
         }
 
-        .move-tool:hover {
-            opacity: 1;
-            color: #3692e7;
+        .dialog-btn-primary {
+            background: #3692e7;
+            color: white;
+        }
+
+        .dialog-btn-secondary {
+            background: #e0e0e0;
+            color: #2e2e2c;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1050;
         }
     </style>
 </head>
@@ -274,35 +305,34 @@
     <div class="container">
         <div class="game-container">
             <div class="board-container">
-                <div id="board"></div>
+                <div class="board-wrapper">
+                    <div id="chessground" class="cg-wrap">
+                        <cg-container>
+                            <cg-board></cg-board>
+                        </cg-container>
+                    </div>
+                </div>
                 <div class="board-tools">
-                    <button class="board-tool" id="flipBtn" title="Flip board">⟲</button>
-                    <button class="board-tool" id="analysisBtn" title="Engine analysis">∞</button>
-                    <button class="board-tool active" id="editBtn" title="Make moves">✎</button>
+                    <button class="board-tool" id="flipBtn" title="Flip board">
+                        <i class="fas fa-retweet"></i>
+                    </button>
+                    <button class="board-tool active" id="editBtn" title="Make moves">
+                        <i class="fas fa-edit"></i>
+                    </button>
                 </div>
                 <div class="controls">
-                    <button class="control-btn" id="startBtn">⟪</button>
-                    <button class="control-btn" id="prevBtn">←</button>
-                    <button class="control-btn" id="nextBtn">→</button>
-                    <button class="control-btn" id="endBtn">⟫</button>
-                </div>
-                <div class="quick-symbols">
-                    <button class="symbol-btn" data-symbol="!">!</button>
-                    <button class="symbol-btn" data-symbol="!!">!!</button>
-                    <button class="symbol-btn" data-symbol="?">?</button>
-                    <button class="symbol-btn" data-symbol="??">??</button>
-                    <button class="symbol-btn" data-symbol="!?">!?</button>
-                    <button class="symbol-btn" data-symbol="?!">?!</button>
-                    <button class="symbol-btn" data-symbol="□">□</button>
-                    <button class="symbol-btn" data-symbol="∆">∆</button>
-                    <button class="symbol-btn" data-symbol="⌓">⌓</button>
-                    <button class="symbol-btn" data-symbol="=">= </button>
-                    <button class="symbol-btn" data-symbol="∞">∞</button>
-                    <button class="symbol-btn" data-symbol="⩲">⩲</button>
-                    <button class="symbol-btn" data-symbol="⩱">⩱</button>
-                </div>
-                <div class="annotation-container">
-                    <textarea id="moveAnnotation" class="annotation-input" placeholder="Add annotation for current move..."></textarea>
+                    <button class="control-btn" id="startBtn">
+                        <i class="fas fa-fast-backward"></i>
+                    </button>
+                    <button class="control-btn" id="prevBtn">
+                        <i class="fas fa-step-backward"></i>
+                    </button>
+                    <button class="control-btn" id="nextBtn">
+                        <i class="fas fa-step-forward"></i>
+                    </button>
+                    <button class="control-btn" id="endBtn">
+                        <i class="fas fa-fast-forward"></i>
+                    </button>
                 </div>
             </div>
             <div class="moves-container">
@@ -314,13 +344,29 @@
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
-    <script src="./js/nav.js"></script>
-    <script src="./js/game.js"></script>
+    <!-- Context Menu Template -->
+    <div id="contextMenu" class="context-menu" style="display: none;">
+        <div class="context-menu-item" data-action="annotate">
+            <i class="fas fa-comment"></i> Add Annotation
+        </div>
+        <div class="context-menu-item" data-action="addVariation">
+            <i class="fas fa-code-branch"></i> Add Variation
+        </div>
+    </div>
+
+    <!-- Annotation Dialog Template -->
+    <div id="annotationDialog" style="display: none;">
+        <div class="overlay"></div>
+        <div class="annotation-dialog">
+            <h3>Add Annotation</h3>
+            <textarea id="annotationText" placeholder="Enter your annotation..."></textarea>
+            <div class="dialog-buttons">
+                <button class="dialog-btn dialog-btn-secondary" id="cancelAnnotation">Cancel</button>
+                <button class="dialog-btn dialog-btn-primary" id="saveAnnotation">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Load navigation and initialize game only if authenticated
         document.addEventListener('DOMContentLoaded', () => {

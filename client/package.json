@@ -2,11 +2,13 @@
   "name": "mychessgames-client",
   "version": "1.0.0",
   "description": "Frontend client for MyChessGames platform",
+  "type": "module",
   "scripts": {
     "start": "serve -s .",
     "dev": "serve ."
   },
   "dependencies": {
-    "serve": "^14.2.1"
+    "serve": "^14.2.1",
+    "esbuild": "^0.19.11"
   }
 }

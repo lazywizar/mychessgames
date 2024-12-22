@@ -51,3 +51,19 @@ client/
 - User authentication (login/register)
 - Responsive design
 - Integration with MyChessGames API
+
+## Building chessground
+### Set NODE path
+export PATH="/opt/homebrew/bin:$PATH"
+
+### Install pnpm globally
+npm install -g pnpm
+
+### Navigate to the chessground directory
+cd /Users/varun/Personal/code/mychessgames/client/chessground
+
+### Install dependencies
+pnpm install
+
+### Build chessground
+pnpm run dist
