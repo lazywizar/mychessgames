@@ -50,12 +50,11 @@ const logger = winston.createLogger({
     ],
 });
 
-// Create a stream object with a write function that will be used by morgan
+// Create a stream object for Morgan
 const stream = {
-    write: (message) => logger.http(message.trim()),
+    write: (message) => {
+        logger.info(message.trim());
+    },
 };
 
-module.exports = {
-    logger,
-    stream,
-};
+module.exports = logger;

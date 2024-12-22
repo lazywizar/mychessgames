@@ -45,4 +45,5 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+// Only create the model if it hasn't been registered
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);

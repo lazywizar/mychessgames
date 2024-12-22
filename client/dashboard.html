@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/template.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/nav.css">
+    <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -15,15 +16,41 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <div class="container">
-            <h1>Dashboard</h1>
-            <!-- Dashboard content will go here -->
+        <div class="dashboard-container">
+            <div id="gamesContainer">
+                <!-- Games table or empty state will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="modal-overlay" id="uploadModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Upload PGN Games</h2>
+                <button class="modal-close" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="file-upload-area" id="dropZone">
+                    <i class="fas fa-cloud-upload-alt file-upload-icon"></i>
+                    <p class="file-upload-text">Drag and drop your PGN file here</p>
+                    <p class="file-upload-text">or</p>
+                    <button class="btn-primary">
+                        <i class="fas fa-folder-open"></i>
+                        Choose File
+                    </button>
+                    <input type="file" id="fileInput" class="file-upload-input" accept=".pgn">
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Scripts -->
     <script src="./js/config.js"></script>
     <script src="./js/nav.js"></script>
+    <script src="./js/dashboard.js"></script>
     <script>
         // Load navigation
         fetch('./partials/nav.html')
