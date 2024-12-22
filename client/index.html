@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="css/template.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="./js/config.js"></script>
+    <script src="./js/auth.js"></script>
 </head>
 <body>
     <div class="container">
@@ -49,12 +51,22 @@
                     <input type="password" id="registerPassword" placeholder="Password" required>
                 </div>
                 <button type="submit">
-                    <i class="fas fa-user-plus"></i> Create Account
+                    <i class="fas fa-user-plus"></i> Register
                 </button>
             </form>
         </div>
     </div>
-    <script src="./js/config.js"></script>
-    <script src="./js/auth.js"></script>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script>
+        // Check if already authenticated
+        document.addEventListener('DOMContentLoaded', () => {
+            if (requireAuth()) {
+                console.log('Already authenticated, redirecting to dashboard');
+                window.location.replace('/dashboard.html');
+            }
+        });
+    </script>
 </body>
 </html>
