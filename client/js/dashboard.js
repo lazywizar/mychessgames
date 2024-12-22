@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gamesTableBody.innerHTML = games.map(game => {
             const gameId = game.id || game._id;  // Try both id formats
             console.log('Game ID:', gameId);
-            
+
             // Ensure the game has an ID before creating the row
             if (!gameId) {
                 console.error('Game missing ID:', game);
@@ -99,17 +99,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('Row clicked, game ID:', gameId);
                 console.log('Row element:', row);
                 console.log('Row dataset:', row.dataset);
-                
+
                 if (!gameId) {
                     console.error('No game ID found in row');
                     return;
                 }
 
-                console.log('Waiting 10 seconds before navigation...');
                 const baseUrl = window.location.origin;
                 const gameUrl = `${baseUrl}/game?id=${gameId}`;
                 console.log('Will navigate to:', gameUrl);
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise(resolve => setTimeout(resolve, 100));
                 console.log('Navigation starting now...');
 
                 // Navigate to game page with the game ID using assign
