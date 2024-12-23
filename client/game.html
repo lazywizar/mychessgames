@@ -26,19 +26,41 @@
             padding: 0;
             background: #fff;
             color: #2e2e2c;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav {
+            flex-shrink: 0;
         }
 
         .analyse {
-            display: flex;
-            flex-direction: row;
+            display: grid;
+            grid-template-columns: auto 320px;
             gap: 2rem;
-            margin-top: 1rem;
+            padding: 1rem;
+            margin-top: 2rem;
+            height: calc(100vh - 96px);
+            overflow: auto;
         }
 
-        .analyse__side {
+        .analyse__board {
+            grid-column: 1;
             display: flex;
             flex-direction: column;
             gap: 1rem;
+            height: fit-content;
+        }
+
+        .analyse__side {
+            grid-column: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-width: 320px;
+            max-height: calc(100vh - 2rem);
+            overflow: hidden;
         }
 
         .analyse__tools {
@@ -51,6 +73,29 @@
             gap: 0.5rem;
         }
 
+        .analyse__controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0.75rem;
+            background: #f7f7f7;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            gap: 2rem;
+        }
+
+        .analyse__controls__tools {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .analyse__controls__jumps {
+            display: flex;
+            gap: 1rem;
+            margin: 0 auto;
+        }
+
         .button {
             padding: 0.5rem;
             background: none;
@@ -58,6 +103,7 @@
             color: #2e2e2c;
             cursor: pointer;
             opacity: 0.7;
+            font-size: 1.1em;
         }
 
         .button:hover {
@@ -79,129 +125,46 @@
 
         .analyse__moves {
             background: #f7f7f7;
-            padding: 1rem;
-            border-radius: 4px;
+            padding: 0.5rem;
+            border-radius: 0 0 4px 4px;
             border: 1px solid #e0e0e0;
             display: flex;
             flex-direction: column;
-            height: 600px;
+            height: 360px;
+            min-height: 360px;
+            max-height: 360px;
             overflow: hidden;
+            margin-bottom: 0.5rem;
         }
 
         .moves-wrap {
-            flex: 1;
+            height: 100%;
             overflow-y: auto;
             padding-right: 0.5rem;
             scrollbar-width: thin;
             scrollbar-color: #ccc transparent;
         }
 
-        .moves-wrap::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .moves-wrap::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .moves-wrap::-webkit-scrollbar-thumb {
-            background-color: #ccc;
-            border-radius: 3px;
-        }
-
         .moves {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            font-size: 1rem;
-            color: #2e2e2c;
-        }
-
-        .analyse__controls {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .analyse__controls__jumps {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .analyse__underboard {
-            padding-bottom: 0.5rem;
-            margin-bottom: 0.5rem;
-            border-bottom: 1px solid #e0e0e0;
             font-size: 0.9em;
-        }
-
-        .analyse__underboard__panels {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .computer-analysis {
-            background: #f7f7f7;
-            padding: 1rem;
-            border-radius: 4px;
-            border: 1px solid #e0e0e0;
-        }
-
-        .move-annotation {
-            background: #f7f7f7;
-            padding: 1rem;
-            border-radius: 4px;
-            border: 1px solid #e0e0e0;
-        }
-
-        .nag-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .analyse__board {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .board-wrapper {
-            width: 600px;
-            height: 600px;
-            position: relative;
-        }
-
-        #chessground {
-            width: 100%;
-            height: 100%;
-        }
-
-        .board-resize {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 1rem;
-        }
-
-        .board-resize-handle {
-            width: 20px;
-            height: 20px;
-            background: #ccc;
-            border-radius: 50%;
-            cursor: se-resize;
+            line-height: 1.4;
+            padding: 0.25rem;
         }
 
         .game-tags {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
+            background: #f7f7f7;
+            padding: 0.5rem;
+            border-radius: 4px 4px 0 0;
+            border: 1px solid #e0e0e0;
+            font-size: 0.9em;
+            margin-bottom: -1px;
         }
 
         .game-tags__player {
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
             align-items: center;
+            margin-bottom: 0.5rem;
         }
 
         .player-name {
@@ -216,39 +179,87 @@
         .game-tags__info {
             display: flex;
             justify-content: space-between;
-        }
-
-        .game-tags__event {
             font-size: 0.9em;
             color: #666;
         }
 
-        .game-tags__date {
+        .analyse__underboard {
+            background: #f7f7f7;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .analyse__underboard textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            resize: none;
+            height: 60px;
+            margin-bottom: 0.5rem;
             font-size: 0.9em;
-            color: #666;
+            box-sizing: border-box;
+            font-family: 'Noto Sans', Sans-Serif;
+        }
+
+        .nag-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nag-buttons .button {
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: white;
+            font-size: 0.9em;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .nag-buttons .button:hover {
+            background: #f0f0f0;
+        }
+
+        .board-wrapper {
+            width: min(calc(100vh - 180px), 600px);
+            height: min(calc(100vh - 180px), 600px);
+            position: relative;
+        }
+
+        .cg-wrap {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #chessground {
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
 <body>
     <nav class="nav"></nav>
     <main class="analyse">
-        <div class="analyse__side">
-            <div class="analyse__tools">
-                <section class="action-menu">
+        <div class="analyse__board main-board">
+            <div class="board-wrapper">
+                <div id="chessground" class="cg-wrap"></div>
+            </div>
+            <section class="analyse__controls">
+                <div class="analyse__controls__tools">
                     <button class="button button-empty" id="flipBtn" title="Flip board">
                         <i class="fas fa-retweet"></i>
                     </button>
                     <button class="button button-empty" id="drawBtn" title="Draw arrows and circles">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
-                </section>
-            </div>
-            <section class="analyse__moves">
-                <div class="moves-wrap">
-                    <div id="moves" class="moves"></div>
                 </div>
-            </section>
-            <section class="analyse__controls">
                 <div class="analyse__controls__jumps">
                     <button class="button" id="startBtn" title="Go to start">⏮</button>
                     <button class="button" id="prevBtn" title="Previous move">⏪</button>
@@ -256,34 +267,9 @@
                     <button class="button" id="endBtn" title="Go to end">⏭</button>
                 </div>
             </section>
-            <section class="analyse__underboard">
-                <div class="analyse__underboard__panels">
-                    <div class="computer-analysis">
-                        <!-- Engine evaluation will go here -->
-                    </div>
-                    <div class="move-annotation">
-                        <textarea id="moveComment" placeholder="Add a comment to this move..." rows="2"></textarea>
-                        <div class="nag-buttons">
-                            <button class="button" data-symbol="!">!</button>
-                            <button class="button" data-symbol="?">?</button>
-                            <button class="button" data-symbol="!!">!!</button>
-                            <button class="button" data-symbol="??">??</button>
-                            <button class="button" data-symbol="!?">!?</button>
-                            <button class="button" data-symbol="?!">?!</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </div>
-        <div class="analyse__board main-board">
-            <div class="board-wrapper">
-                <div id="chessground" class="cg-wrap"></div>
-            </div>
-            <div class="board-resize">
-                <div class="board-resize-handle"></div>
-            </div>
-        </div>
-        <div class="analyse__tools">
+        
+        <div class="analyse__side">
             <section class="game-tags">
                 <div class="game-tags__player white">
                     <span class="player-name" id="whitePlayer"></span>
@@ -296,6 +282,24 @@
                 <div class="game-tags__info">
                     <span class="game-tags__event" id="gameEvent"></span>
                     <span class="game-tags__date" id="gameDate"></span>
+                </div>
+            </section>
+
+            <section class="analyse__moves">
+                <div class="moves-wrap">
+                    <div id="moves" class="moves"></div>
+                </div>
+            </section>
+
+            <section class="analyse__underboard">
+                <textarea id="moveComment" placeholder="Add a comment to this move..." rows="2"></textarea>
+                <div class="nag-buttons">
+                    <button class="button" data-symbol="!">!</button>
+                    <button class="button" data-symbol="?">?</button>
+                    <button class="button" data-symbol="!!">!!</button>
+                    <button class="button" data-symbol="??">??</button>
+                    <button class="button" data-symbol="!?">!?</button>
+                    <button class="button" data-symbol="?!">?!</button>
                 </div>
             </section>
         </div>

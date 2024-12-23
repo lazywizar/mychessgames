@@ -695,7 +695,9 @@ function updatePosition() {
     } else {
         game.reset();
         for (let i = 0; i <= currentMove; i++) {
-            game.move(moves[i]);
+            const move = moves[i];
+            // Handle both simple moves and verbose move objects
+            game.move(typeof move === 'object' ? { from: move.from, to: move.to, promotion: move.promotion } : move);
         }
     }
     
@@ -731,6 +733,8 @@ function updatePosition() {
             commentInput.value = '';
         }
     }
+    
+    updateControls();
 }
 
 function updateControls() {
