@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const gameId = row.getAttribute('data-id');
-                window.location.href = `/game.html?id=${gameId}`;
+                window.location.href = `/game?id=${gameId}`;
             });
         });
 
@@ -136,13 +136,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
-                    
+
                     // Get filename from Content-Disposition header or use default
                     const contentDisposition = response.headers.get('content-disposition');
                     const filename = contentDisposition
                         ? contentDisposition.split('filename=')[1].replace(/"/g, '')
                         : 'game.pgn';
-                    
+
                     link.href = url;
                     link.download = filename;
                     document.body.appendChild(link);
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dropZoneText = document.querySelector('.file-upload-text');
         const originalText = dropZoneText.textContent;
         dropZoneText.textContent = 'Uploading...';
-        
+
         const formData = new FormData();
         formData.append('pgn', file);
 
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Success case
                 const successMessage = `Successfully uploaded ${data.summary.savedGames} game${data.summary.savedGames !== 1 ? 's' : ''}`;
                 let message = successMessage;
-                
+
                 // Add error information if any
                 if (data.summary.failedGames > 0) {
                     message += `\n\nWarning: ${data.summary.failedGames} game${data.summary.failedGames !== 1 ? 's' : ''} failed to upload.`;

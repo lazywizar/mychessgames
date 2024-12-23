@@ -75,8 +75,8 @@ async function initGame() {
         }
 
         // Set moves from either gameData or chess.js history
-        moves = gameData.moves ? 
-            gameData.moves.split(' ').filter(move => move.trim()) : 
+        moves = gameData.moves ?
+            gameData.moves.split(' ').filter(move => move.trim()) :
             game.history({ verbose: true });
 
         console.log('Moves initialized:', moves);
@@ -175,7 +175,7 @@ function initializeChessground() {
     }
 
     // Initialize Chessground
-    ground = Chessground.Chessground(el, config);  
+    ground = Chessground.Chessground(el, config);
 
     if (!ground) {
         throw new Error('Failed to initialize Chessground');
@@ -435,7 +435,7 @@ async function saveAnnotation(moveIndex, annotationData) {
 
     // Get existing annotations
     const currentAnnotations = gameData.annotations || [];
-    
+
     // Create the annotation object with required fields
     const annotation = {
         moveNumber: moveIndex,
@@ -445,14 +445,14 @@ async function saveAnnotation(moveIndex, annotationData) {
         variations: annotationData.variations || [],
         shapes: annotationData.shapes || []  // Ensure shapes are included
     };
-    
+
     // Update local annotations object for immediate use
     annotations[moveIndex] = {
         comment: annotation.comment || '',
         nag: annotation.nags && annotation.nags.length > 0 ? annotation.nags[0] : '',
         shapes: annotation.shapes || []
     };
-    
+
     // Update or add the annotation in the gameData
     const existingIndex = currentAnnotations.findIndex(a => a.moveNumber === moveIndex);
     if (existingIndex !== -1) {
@@ -463,10 +463,10 @@ async function saveAnnotation(moveIndex, annotationData) {
     } else {
         currentAnnotations.push(annotation);
     }
-    
+
     // Update local state
     gameData.annotations = currentAnnotations;
-    
+
     // Send to server
     fetch(`${CONFIG.API_URL}/games/${gameId}/annotations`, {
         method: 'PATCH',
@@ -488,7 +488,7 @@ async function saveAnnotation(moveIndex, annotationData) {
         console.log('Annotation saved:', data);
         // Update local game data with server response
         gameData = data;
-        
+
         // Update local annotations from the response
         if (data.annotations) {
             data.annotations.forEach(ann => {
@@ -499,7 +499,7 @@ async function saveAnnotation(moveIndex, annotationData) {
                 };
             });
         }
-        
+
         // Refresh the display
         displayMoves();
     })
@@ -557,7 +557,7 @@ function displayGameInfo() {
     if (whiteRatingEl) whiteRatingEl.textContent = gameData.whiteElo ? `(${gameData.whiteElo})` : '';
     if (blackPlayerEl) blackPlayerEl.textContent = gameData.black || 'Black';
     if (blackRatingEl) blackRatingEl.textContent = gameData.blackElo ? `(${gameData.blackElo})` : '';
-    
+
     // Update game metadata
     const event = gameData.event || 'Game';
     const timeControl = gameData.timeControl || 'Standard';
@@ -653,16 +653,16 @@ function displayMoves() {
 function createMoveElement(move, index, isWhite) {
     const moveSpan = document.createElement('span');
     moveSpan.className = `move ${isWhite ? 'white' : 'black'}`;
-    
+
     let moveText = move.san;
-    
+
     // Add NAG symbol if exists
     if (annotations[index] && annotations[index].nag) {
         moveText += annotations[index].nag;
     }
-    
+
     moveSpan.textContent = moveText;
-    
+
     // Add comment indicator if exists
     if (annotations[index] && annotations[index].comment) {
         const commentIcon = document.createElement('span');
@@ -671,7 +671,7 @@ function createMoveElement(move, index, isWhite) {
         commentIcon.title = annotations[index].comment;
         moveSpan.appendChild(commentIcon);
     }
-    
+
     // Add shape indicator if exists
     if (annotations[index] && annotations[index].shapes && annotations[index].shapes.length > 0) {
         const shapeIcon = document.createElement('span');
@@ -679,13 +679,13 @@ function createMoveElement(move, index, isWhite) {
         shapeIcon.textContent = '✏️';
         moveSpan.appendChild(shapeIcon);
     }
-    
+
     moveSpan.addEventListener('click', () => {
         currentMove = typeof index === 'string' ? parseInt(index.split('-')[1]) : index;
         updatePosition();
         displayMoves();
     });
-    
+
     return moveSpan;
 }
 
@@ -700,7 +700,7 @@ function updatePosition() {
             game.move(typeof move === 'object' ? { from: move.from, to: move.to, promotion: move.promotion } : move);
         }
     }
-    
+
     ground.set({
         fen: game.fen(),
         turnColor: game.turn() === 'w' ? 'white' : 'black',
@@ -709,18 +709,18 @@ function updatePosition() {
             dests: getValidMoves()
         }
     });
-    
+
     // Update shapes and comments
     if (annotations[currentMove]) {
         const annotation = annotations[currentMove];
-        
+
         // Update shapes
         if (annotation.shapes && Array.isArray(annotation.shapes)) {
             ground.setShapes(annotation.shapes);
         } else {
             ground.setShapes([]);
         }
-        
+
         // Update comment
         const commentInput = document.getElementById('moveComment');
         if (commentInput) {
@@ -733,7 +733,7 @@ function updatePosition() {
             commentInput.value = '';
         }
     }
-    
+
     updateControls();
 }
 

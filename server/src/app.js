@@ -18,10 +18,10 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-app.use(morgan('combined', { 
-    stream: { 
-        write: message => logger.info(message.trim()) 
-    } 
+app.use(morgan('combined', {
+    stream: {
+        write: message => logger.info(message.trim())
+    }
 }));
 
 // Serve static files from the client directory
@@ -45,18 +45,18 @@ app.get('/health', (req, res) => {
 app.get('/game', (req, res) => {
     const gameId = req.query.id;
     logger.info(`Game route hit with ID: ${gameId}`);
-    
+
     if (!gameId) {
         logger.warn('No game ID provided, redirecting to dashboard');
         return res.redirect('/dashboard');
     }
-    
+
     // Validate MongoDB ObjectId format
     if (!/^[0-9a-fA-F]{24}$/.test(gameId)) {
         logger.warn(`Invalid game ID format: ${gameId}`);
         return res.redirect('/dashboard');
     }
-    
+
     res.sendFile(path.join(__dirname, '../../client/game.html'));
 });
 
