@@ -172,64 +172,8 @@ router.get('/:id/pgn', auth, async (req, res) => {
         // Generate current date for PGN header
         const currentDate = new Date().toISOString().split('T')[0];
 
-        // Construct PGN with updated headers and annotations
-        let pgn = `[Event "${game.event}"]\n`;
-        pgn += `[Site "${game.site}"]\n`;
-        pgn += `[Date "${game.date ? game.date.toISOString().split('T')[0] : '????-??-??'}"]\n`;
-        pgn += `[Round "${game.round}"]\n`;
-        pgn += `[White "${game.white}"]\n`;
-        pgn += `[Black "${game.black}"]\n`;
-        pgn += `[Result "${game.result}"]\n`;
-        if (game.eco) pgn += `[ECO "${game.eco}"]\n`;
-        if (game.whiteElo) pgn += `[WhiteElo "${game.whiteElo}"]\n`;
-        if (game.blackElo) pgn += `[BlackElo "${game.blackElo}"]\n`;
-        if (game.timeControl) pgn += `[TimeControl "${game.timeControl}"]\n`;
-        if (game.termination) pgn += `[Termination "${game.termination}"]\n`;
-        pgn += '\n';
-
-        // Add moves with annotations
-        const moves = game.moves.split(' ');
-        const annotations = game.annotations || [];
-        let moveNumber = 1;
-        let isWhiteMove = true;
-
-        for (let i = 0; i < moves.length; i++) {
-            const annotation = annotations.find(a => a.moveNumber === i);
-
-            if (isWhiteMove) {
-                pgn += `${moveNumber}. `;
-            }
-
-            pgn += moves[i];
-
-            if (annotation) {
-                if (annotation.nags && annotation.nags.length > 0) {
-                    pgn += annotation.nags.join('');
-                }
-                if (annotation.comment) {
-                    pgn += ` {${annotation.comment}}`;
-                }
-                if (annotation.variations && annotation.variations.length > 0) {
-                    annotation.variations.forEach(variation => {
-                        pgn += ` (${variation})`;
-                    });
-                }
-            }
-
-            pgn += ' ';
-
-            if (!isWhiteMove) {
-                moveNumber++;
-            }
-            isWhiteMove = !isWhiteMove;
-        }
-
-        pgn += game.result;
-
-        // Add general comments at the end if they exist
-        if (game.generalComments) {
-            pgn += `\n\n{${game.generalComments}}`;
-        }
+        // Use the stored PGN directly
+        let pgn = game.pgn;
 
         // Set headers for file download
         res.setHeader('Content-Type', 'application/x-chess-pgn');

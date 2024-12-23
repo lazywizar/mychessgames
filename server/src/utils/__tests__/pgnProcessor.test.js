@@ -24,7 +24,7 @@ describe('PGN Processor', () => {
                 result: '1-0',
                 whiteElo: 1500,
                 blackElo: 1400,
-                moves: 'e4 e5 Nf3 Nc6 Bb5'
+                moves: '1. e4 e5 2. Nf3 Nc6 3. Bb5 1-0'
             });
             expect(result.date).toBeInstanceOf(Date);
         });
@@ -64,6 +64,24 @@ describe('PGN Processor', () => {
 [Black "Player2"]`;
 
             expect(() => processGame(pgn, 0)).toThrow('No moves found');
+        });
+
+        test('should preserve annotations in moves', () => {
+            const pgn = `[Event "Annotated Game"]
+[Site "Chess.com"]
+[Date "2023.12.23"]
+[White "Player1"]
+[Black "Player2"]
+[Result "1-0"]
+
+1. e4! {Great opening move} 1...e5 2. Nf3 $1 {Strong development} 2...Nc6 3. Bb5 1-0`;
+
+            const result = processGame(pgn, 0);
+
+            expect(result.moves).toBe('1. e4! {Great opening move} 1...e5 2. Nf3 $1 {Strong development} 2...Nc6 3. Bb5 1-0');
+            expect(result.pgn).toContain('{Great opening move}');
+            expect(result.pgn).toContain('$1');
+            expect(result.pgn).toContain('{Strong development}');
         });
     });
 
@@ -114,7 +132,7 @@ describe('PGN Processor', () => {
 
             expect(result.processedGames).toHaveLength(1);
             expect(result.errors).toHaveLength(1);
-            expect(result.errors[0]).toContain('Missing Event header');
+            expect(result.errors[0]).toBe('Game 2: Invalid PGN format: Missing Event header');
             expect(result.processedGames[0].event).toBe('Valid Game');
         });
 

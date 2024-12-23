@@ -23,7 +23,7 @@ const processGame = (gamePgn, gameIndex) => {
     // Fix PGN format - ensure proper line breaks between headers and moves
     const lines = gamePgn.trim().split('\n');
     const headers = [];
-    const moves = [];
+    let movesSection = '';
     let isInMoves = false;
 
     for (const line of lines) {
@@ -37,16 +37,16 @@ const processGame = (gamePgn, gameIndex) => {
             headers.push(trimmedLine);
         } else {
             isInMoves = true;
-            moves.push(trimmedLine);
+            movesSection += (movesSection ? ' ' : '') + trimmedLine;
         }
     }
 
-    if (moves.length === 0) {
+    if (!movesSection) {
         throw new Error('Invalid PGN format: No moves found');
     }
 
     // Reconstruct PGN with proper formatting
-    const processedPgn = headers.join('\n') + '\n\n' + moves.join(' ');
+    const processedPgn = headers.join('\n') + '\n\n' + movesSection;
 
     const chess = new Chess();
     try {
@@ -76,7 +76,7 @@ const processGame = (gamePgn, gameIndex) => {
         timeControl: parsedHeaders.TimeControl || null,
         termination: parsedHeaders.Termination || null,
         pgn: processedPgn,
-        moves: chess.history().join(' ')
+        moves: movesSection // Store the original moves section with annotations
     };
 };
 
@@ -99,16 +99,10 @@ const processPgnFile = (pgnContent) => {
 
     for (let [index, gamePgn] of games.entries()) {
         try {
-            if (!gamePgn.trim()) continue;
-            const gameData = processGame(gamePgn, index);
-            processedGames.push(gameData);
-            logger.info(`Successfully processed game ${index + 1}`);
+            const processedGame = processGame(gamePgn, index);
+            processedGames.push(processedGame);
         } catch (error) {
-            logger.error(`Error processing game ${index + 1}: ${error.message}`, {
-                error: error.stack,
-                gameNumber: index + 1,
-                totalGames: games.length
-            });
+            logger.error(`Error processing game ${index + 1}: ${error.message}`);
             errors.push(`Game ${index + 1}: ${error.message}`);
         }
     }
