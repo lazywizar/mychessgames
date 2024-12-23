@@ -210,6 +210,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Show loading state
+        const dropZoneText = document.querySelector('.file-upload-text');
+        const originalText = dropZoneText.textContent;
+        dropZoneText.textContent = 'Uploading...';
+        
         const formData = new FormData();
         formData.append('pgn', file);
 
@@ -225,14 +230,42 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (response.ok) {
+                // Success case
+                const successMessage = `Successfully uploaded ${data.summary.savedGames} game${data.summary.savedGames !== 1 ? 's' : ''}`;
+                let message = successMessage;
+                
+                // Add error information if any
+                if (data.summary.failedGames > 0) {
+                    message += `\n\nWarning: ${data.summary.failedGames} game${data.summary.failedGames !== 1 ? 's' : ''} failed to upload.`;
+                    if (data.errors) {
+                        message += '\n\nErrors:\n' + data.errors.join('\n');
+                    }
+                }
+
+                alert(message);
                 modal.style.display = 'none';
                 loadGames();  // Reload games list
             } else {
-                throw new Error(data.message || 'Upload failed');
+                // Error case
+                let errorMessage = 'Upload failed: ';
+                if (data.error) {
+                    errorMessage += data.error;
+                    if (data.details && data.details.length > 0) {
+                        errorMessage += '\n\nDetails:\n' + data.details.join('\n');
+                    }
+                } else {
+                    errorMessage += 'Unknown error occurred';
+                }
+                throw new Error(errorMessage);
             }
         } catch (error) {
             console.error('Upload error:', error);
-            alert(error.message || 'Error uploading file');
+            alert(error.message || 'Error uploading file. Please ensure the file is a valid PGN format.');
+        } finally {
+            // Reset the upload text
+            if (dropZoneText) {
+                dropZoneText.textContent = originalText;
+            }
         }
     }
 

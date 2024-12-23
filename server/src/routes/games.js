@@ -5,6 +5,8 @@ const mongoose = require('mongoose');
 const auth = require('../middleware/auth');
 const Game = require('../models/game');
 const logger = require('../utils/logger');
+const { Chess } = require('chess.js');
+const { processPgnFile } = require('../utils/pgnProcessor');
 
 // Configure multer for memory storage
 const upload = multer({
@@ -39,7 +41,7 @@ router.get('/:id', auth, async (req, res) => {
         }
 
         logger.info(`Fetching game ${req.params.id} for user ${req.user.username}`);
-        
+
         const game = await Game.findOne({
             _id: req.params.id,
             user: req.user._id
@@ -68,7 +70,7 @@ router.delete('/:id', auth, async (req, res) => {
         }
 
         logger.info(`Attempting to delete game ${req.params.id} for user ${req.user.username}`);
-        
+
         const result = await Game.findOneAndDelete({
             _id: req.params.id,
             user: req.user._id
@@ -156,7 +158,7 @@ router.get('/:id/pgn', auth, async (req, res) => {
         }
 
         logger.info(`Fetching PGN for game ${req.params.id}`);
-        
+
         const game = await Game.findOne({
             _id: req.params.id,
             user: req.user._id
@@ -193,13 +195,13 @@ router.get('/:id/pgn', auth, async (req, res) => {
 
         for (let i = 0; i < moves.length; i++) {
             const annotation = annotations.find(a => a.moveNumber === i);
-            
+
             if (isWhiteMove) {
                 pgn += `${moveNumber}. `;
             }
-            
+
             pgn += moves[i];
-            
+
             if (annotation) {
                 if (annotation.nags && annotation.nags.length > 0) {
                     pgn += annotation.nags.join('');
@@ -213,9 +215,9 @@ router.get('/:id/pgn', auth, async (req, res) => {
                     });
                 }
             }
-            
+
             pgn += ' ';
-            
+
             if (!isWhiteMove) {
                 moveNumber++;
             }
@@ -232,7 +234,7 @@ router.get('/:id/pgn', auth, async (req, res) => {
         // Set headers for file download
         res.setHeader('Content-Type', 'application/x-chess-pgn');
         res.setHeader('Content-Disposition', `attachment; filename="${game.white}_vs_${game.black}_${currentDate}.pgn"`);
-        
+
         logger.info(`Successfully generated PGN for game ${req.params.id}`);
         res.send(pgn);
     } catch (error) {
@@ -250,25 +252,58 @@ router.post('/upload', auth, upload.single('pgn'), async (req, res) => {
         }
 
         const pgnContent = req.file.buffer.toString();
+        logger.info(`Processing PGN upload for user ${req.user.username}`);
 
-        // Basic validation
-        if (!pgnContent.trim()) {
-            logger.warn('Empty PGN file uploaded');
-            return res.status(400).json({ error: 'PGN file is empty' });
+        const { processedGames, errors, summary } = processPgnFile(pgnContent);
+        
+        if (processedGames.length === 0) {
+            logger.error('PGN upload failed - No valid games found', summary);
+            return res.status(400).json({ 
+                error: 'No valid games found in PGN file',
+                details: errors
+            });
         }
 
-        // Create game document
-        const game = new Game({
-            user: req.user._id,
-            pgn: pgnContent
+        // Save processed games to database
+        const savedGames = [];
+        for (const gameData of processedGames) {
+            try {
+                const game = new Game({
+                    user: req.user._id,
+                    ...gameData
+                });
+                await game.save();
+                savedGames.push(game.toAPI());
+                logger.info(`Successfully saved game to database (ID: ${game._id})`);
+            } catch (error) {
+                logger.error(`Error saving game to database: ${error.message}`, {
+                    error: error.stack
+                });
+                errors.push(`Database error: ${error.message}`);
+            }
+        }
+
+        logger.info('PGN upload completed successfully', {
+            ...summary,
+            savedGames: savedGames.length,
+            username: req.user.username
         });
-
-        await game.save();
-        logger.info(`Successfully uploaded PGN for user ${req.user.username}, game ID: ${game._id}`);
-
-        res.status(201).json(game.toAPI());
+        
+        res.status(201).json({
+            message: `Successfully uploaded ${savedGames.length} games${errors.length ? ` with ${errors.length} errors` : ''}`,
+            games: savedGames,
+            errors: errors.length ? errors : undefined,
+            summary: {
+                totalGames: summary.totalGames,
+                savedGames: savedGames.length,
+                failedGames: errors.length
+            }
+        });
     } catch (error) {
-        logger.error(`Error uploading PGN: ${error.message}`);
+        logger.error(`Error uploading PGN: ${error.message}`, {
+            error: error.stack,
+            username: req.user.username
+        });
         res.status(500).json({ error: 'Error uploading PGN file' });
     }
 });
