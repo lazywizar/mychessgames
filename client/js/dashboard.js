@@ -87,6 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${game.event || '-'}</td>
                     <td>${game.eco || '-'}</td>
                     <td class="actions">
+                        <button class="download-btn" data-id="${gameId}" title="Download PGN">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </td>
+                    <td class="actions">
                         <button class="delete-btn" data-id="${gameId}" title="Delete game">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -99,13 +104,55 @@ document.addEventListener('DOMContentLoaded', () => {
         const rows = gamesTableBody.querySelectorAll('.game-row');
         rows.forEach(row => {
             row.addEventListener('click', async (e) => {
-                // Don't navigate if clicking the delete button
-                if (e.target.closest('.delete-btn')) {
+                // Don't navigate if clicking the delete or download button
+                if (e.target.closest('.delete-btn') || e.target.closest('.download-btn')) {
                     return;
                 }
 
                 const gameId = row.getAttribute('data-id');
                 window.location.href = `/game.html?id=${gameId}`;
+            });
+        });
+
+        // Add download button handlers
+        const downloadButtons = gamesTableBody.querySelectorAll('.download-btn');
+        downloadButtons.forEach(button => {
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation(); // Prevent row click
+                const gameId = button.getAttribute('data-id');
+
+                try {
+                    const token = getToken();
+                    const response = await fetch(`${CONFIG.API_URL}/games/${gameId}/pgn`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    
+                    // Get filename from Content-Disposition header or use default
+                    const contentDisposition = response.headers.get('content-disposition');
+                    const filename = contentDisposition
+                        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                        : 'game.pgn';
+                    
+                    link.href = url;
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error('Error downloading PGN:', error);
+                    alert('Error downloading PGN');
+                }
             });
         });
 

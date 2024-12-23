@@ -146,6 +146,101 @@ router.patch('/:id/annotations', auth, async (req, res) => {
     }
 });
 
+// Download game PGN
+router.get('/:id/pgn', auth, async (req, res) => {
+    try {
+        // Validate MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            logger.error(`Invalid game ID format: ${req.params.id}`);
+            return res.status(400).json({ error: 'Invalid game ID format' });
+        }
+
+        logger.info(`Fetching PGN for game ${req.params.id}`);
+        
+        const game = await Game.findOne({
+            _id: req.params.id,
+            user: req.user._id
+        });
+
+        if (!game) {
+            logger.warn(`Game not found: ${req.params.id}`);
+            return res.status(404).json({ error: 'Game not found' });
+        }
+
+        // Generate current date for PGN header
+        const currentDate = new Date().toISOString().split('T')[0];
+
+        // Construct PGN with updated headers and annotations
+        let pgn = `[Event "${game.event}"]\n`;
+        pgn += `[Site "${game.site}"]\n`;
+        pgn += `[Date "${game.date ? game.date.toISOString().split('T')[0] : '????-??-??'}"]\n`;
+        pgn += `[Round "${game.round}"]\n`;
+        pgn += `[White "${game.white}"]\n`;
+        pgn += `[Black "${game.black}"]\n`;
+        pgn += `[Result "${game.result}"]\n`;
+        if (game.eco) pgn += `[ECO "${game.eco}"]\n`;
+        if (game.whiteElo) pgn += `[WhiteElo "${game.whiteElo}"]\n`;
+        if (game.blackElo) pgn += `[BlackElo "${game.blackElo}"]\n`;
+        if (game.timeControl) pgn += `[TimeControl "${game.timeControl}"]\n`;
+        if (game.termination) pgn += `[Termination "${game.termination}"]\n`;
+        pgn += '\n';
+
+        // Add moves with annotations
+        const moves = game.moves.split(' ');
+        const annotations = game.annotations || [];
+        let moveNumber = 1;
+        let isWhiteMove = true;
+
+        for (let i = 0; i < moves.length; i++) {
+            const annotation = annotations.find(a => a.moveNumber === i);
+            
+            if (isWhiteMove) {
+                pgn += `${moveNumber}. `;
+            }
+            
+            pgn += moves[i];
+            
+            if (annotation) {
+                if (annotation.nags && annotation.nags.length > 0) {
+                    pgn += annotation.nags.join('');
+                }
+                if (annotation.comment) {
+                    pgn += ` {${annotation.comment}}`;
+                }
+                if (annotation.variations && annotation.variations.length > 0) {
+                    annotation.variations.forEach(variation => {
+                        pgn += ` (${variation})`;
+                    });
+                }
+            }
+            
+            pgn += ' ';
+            
+            if (!isWhiteMove) {
+                moveNumber++;
+            }
+            isWhiteMove = !isWhiteMove;
+        }
+
+        pgn += game.result;
+
+        // Add general comments at the end if they exist
+        if (game.generalComments) {
+            pgn += `\n\n{${game.generalComments}}`;
+        }
+
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/x-chess-pgn');
+        res.setHeader('Content-Disposition', `attachment; filename="${game.white}_vs_${game.black}_${currentDate}.pgn"`);
+        
+        logger.info(`Successfully generated PGN for game ${req.params.id}`);
+        res.send(pgn);
+    } catch (error) {
+        logger.error(`Error generating PGN for game ${req.params.id}: ${error.message}`);
+        res.status(500).json({ error: 'Error generating PGN' });
+    }
+});
+
 // Upload a PGN file
 router.post('/upload', auth, upload.single('pgn'), async (req, res) => {
     try {

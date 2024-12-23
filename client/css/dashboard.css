@@ -141,10 +141,11 @@
 /* Actions column */
 .actions {
     text-align: center;
-    width: 80px;
+    width: 60px;
 }
 
-.delete-btn {
+.delete-btn,
+.download-btn {
     background: none;
     border: none;
     color: var(--text-secondary);
@@ -159,11 +160,18 @@
     background-color: rgba(239, 68, 68, 0.1);
 }
 
-.delete-btn:active {
+.download-btn:hover {
+    color: var(--primary-color);
+    background-color: rgba(54, 146, 231, 0.1);
+}
+
+.delete-btn:active,
+.download-btn:active {
     transform: scale(0.95);
 }
 
-.game-row:hover .delete-btn {
+.game-row:hover .delete-btn,
+.game-row:hover .download-btn {
     opacity: 1;
 }
 
