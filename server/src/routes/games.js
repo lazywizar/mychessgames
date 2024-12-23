@@ -58,6 +58,35 @@ router.get('/:id', auth, async (req, res) => {
     }
 });
 
+// Delete a game
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        // Validate MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            logger.error(`Invalid game ID format: ${req.params.id}`);
+            return res.status(400).json({ error: 'Invalid game ID format' });
+        }
+
+        logger.info(`Attempting to delete game ${req.params.id} for user ${req.user.username}`);
+        
+        const result = await Game.findOneAndDelete({
+            _id: req.params.id,
+            user: req.user._id
+        });
+
+        if (!result) {
+            logger.warn(`Game not found or unauthorized: ${req.params.id}`);
+            return res.status(404).json({ error: 'Game not found or unauthorized' });
+        }
+
+        logger.info(`Successfully deleted game ${req.params.id}`);
+        res.status(200).json({ message: 'Game deleted successfully' });
+    } catch (error) {
+        logger.error(`Error deleting game ${req.params.id}: ${error.message}`);
+        res.status(500).json({ error: 'Error deleting game' });
+    }
+});
+
 // Update game annotations
 router.patch('/:id/annotations', auth, async (req, res) => {
     try {

@@ -71,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         gamesTableBody.innerHTML = games.map(game => {
             const gameId = game.id || game._id;  // Try both id formats
-            console.log('Game ID:', gameId);
 
             // Ensure the game has an ID before creating the row
             if (!gameId) {
@@ -87,6 +86,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${game.result || '-'}</td>
                     <td>${game.event || '-'}</td>
                     <td>${game.eco || '-'}</td>
+                    <td class="actions">
+                        <button class="delete-btn" data-id="${gameId}" title="Delete game">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
                 </tr>
             `;
         }).join('');
@@ -95,24 +99,48 @@ document.addEventListener('DOMContentLoaded', () => {
         const rows = gamesTableBody.querySelectorAll('.game-row');
         rows.forEach(row => {
             row.addEventListener('click', async (e) => {
-                const gameId = row.getAttribute('data-id');
-                console.log('Row clicked, game ID:', gameId);
-                console.log('Row element:', row);
-                console.log('Row dataset:', row.dataset);
-
-                if (!gameId) {
-                    console.error('No game ID found in row');
+                // Don't navigate if clicking the delete button
+                if (e.target.closest('.delete-btn')) {
                     return;
                 }
 
-                const baseUrl = window.location.origin;
-                const gameUrl = `${baseUrl}/game?id=${gameId}`;
-                console.log('Will navigate to:', gameUrl);
-                await new Promise(resolve => setTimeout(resolve, 100));
-                console.log('Navigation starting now...');
+                const gameId = row.getAttribute('data-id');
+                window.location.href = `/game.html?id=${gameId}`;
+            });
+        });
 
-                // Navigate to game page with the game ID using assign
-                window.location.assign(gameUrl);
+        // Add delete button handlers
+        const deleteButtons = gamesTableBody.querySelectorAll('.delete-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation(); // Prevent row click
+                const gameId = button.getAttribute('data-id');
+
+                if (confirm('Are you sure you want to delete this game?')) {
+                    try {
+                        const response = await fetch(`${CONFIG.API_URL}/games/${gameId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${getToken()}`
+                            }
+                        });
+
+                        if (!response.ok) throw new Error('Failed to delete game');
+
+                        // Remove the row from the table
+                        const row = button.closest('.game-row');
+                        row.remove();
+
+                        // Check if table is empty
+                        if (gamesTableBody.children.length === 0) {
+                            if (emptyState) emptyState.style.display = 'block';
+                            if (gamesTable) gamesTable.style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.error('Error deleting game:', error);
+                        alert('Error deleting game');
+                    }
+                }
             });
         });
     }
