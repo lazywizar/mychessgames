@@ -3,12 +3,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 :root {
-    --primary-color: #8B5CF6;
-    --primary-light: #A78BFA;
+    --primary-color: #3692e7;
+    --primary-light: #5da9f0;
     --background-color: #F3F4F6;
     --card-background: #FFFFFF;
-    --text-primary: #1F2937;
-    --text-secondary: #6B7280;
+    --text-primary: #2e2e2c;
+    --text-secondary: #666666;
     --border-color: #E5E7EB;
     --success-color: #10B981;
     --error-color: #EF4444;
@@ -18,8 +18,8 @@
 }
 
 body {
-    background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
-    font-family: 'Inter', sans-serif;
+    background: var(--background-color);
+    font-family: 'Inter', 'Noto Sans', sans-serif;
     color: var(--text-primary);
     min-height: 100vh;
     margin: 0;
@@ -357,13 +357,14 @@ button[type="submit"]:active {
 /* Dark mode specific */
 @media (prefers-color-scheme: dark) {
     :root {
+        --background-color: #161512;
         --background-light: #262421;
         --background-hover: #302e2c;
         --background-input: #363432;
         --text-primary: #bababa;
-        --text-secondary: #666;
+        --text-secondary: #999999;
         --border-color: #404040;
-        --primary-color: #3692e7;
+        --card-background: #262421;
     }
 }
 
