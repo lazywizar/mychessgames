@@ -88,7 +88,17 @@ const gameSchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    annotations: [annotationSchema],
+    annotations: [{
+        moveNumber: Number,
+        variation: String,
+        comment: String,
+        nags: [String],
+        shapes: [{
+            brush: String,
+            orig: String,
+            dest: String
+        }]
+    }],
     generalComments: {
         type: String,
         default: ''
@@ -128,12 +138,12 @@ gameSchema.pre('save', function(next) {
     // Convert NaN to null for numeric fields
     if (this.whiteElo === null || isNaN(this.whiteElo)) this.whiteElo = null;
     if (this.blackElo === null || isNaN(this.blackElo)) this.blackElo = null;
-    
+
     // Convert empty strings to null for optional string fields
     if (this.eco === '') this.eco = null;
     if (this.timeControl === '') this.timeControl = null;
     if (this.termination === '') this.termination = null;
-    
+
     // Handle date
     if (this.date === '') {
         this.date = null;
@@ -142,7 +152,7 @@ gameSchema.pre('save', function(next) {
         const parsedDate = new Date(this.date);
         this.date = isNaN(parsedDate.getTime()) ? null : parsedDate;
     }
-    
+
     next();
 });
 

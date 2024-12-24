@@ -62,6 +62,95 @@ const processGame = (gamePgn, gameIndex) => {
     // Get headers directly from chess.js
     const parsedHeaders = chess.header();
 
+    // Save original moves section with annotations
+    const originalMoves = movesSection;
+
+    // Extract variations and comments using regex
+    const variations = [];
+    let currentMoveNumber = 0;
+
+    // Remove comments temporarily to process moves
+    const pgnWithoutComments = processedPgn.replace(/\{[^}]*\}/g, '');
+
+    function findVariations(pgn) {
+        let depth = 0;
+        let variationStart = -1;
+        const vars = [];
+
+        for (let i = 0; i < pgn.length; i++) {
+            if (pgn[i] === '(') {
+                if (depth === 0) {
+                    const beforeVar = pgn.slice(0, i);
+                    const moveMatches = beforeVar.match(/(\d+)\./g);
+                    if (moveMatches) {
+                        const lastMoveNum = parseInt(moveMatches[moveMatches.length - 1]);
+                        const nextText = pgn.slice(i + 1).trim();
+                        const isBlackMove = nextText.match(/^\d+\s*\.\.\./);
+                        currentMoveNumber = isBlackMove ? lastMoveNum : lastMoveNum;
+                    }
+                    variationStart = i;
+                }
+                depth++;
+            } else if (pgn[i] === ')') {
+                depth--;
+                if (depth === 0 && variationStart !== -1) {
+                    const content = pgn.slice(variationStart + 1, i).trim();
+                    vars.push({
+                        moveNumber: currentMoveNumber,
+                        content: content,
+                        mainMove: chess.history()[currentMoveNumber - 1]
+                    });
+                }
+            }
+        }
+        return vars;
+    }
+
+    const foundVariations = findVariations(pgnWithoutComments);
+
+    foundVariations.forEach(v => {
+        const cleanedVariation = v.content
+            .replace(/^\d+\s*\.+\s*/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        variations.push({
+            moveNumber: v.moveNumber,
+            variation: cleanedVariation,
+            move: v.mainMove
+        });
+    });
+
+    // Process comments
+    const comments = [];
+    let commentMatch;
+    const commentRegex = /\{([^}]*)\}/g;
+
+    while ((commentMatch = commentRegex.exec(processedPgn)) !== null) {
+        const beforeComment = processedPgn.slice(0, commentMatch.index);
+        const moveCount = (beforeComment.match(/\d+\./g) || []).length;
+
+        comments.push({
+            moveNumber: moveCount,
+            comment: commentMatch[1].trim()
+        });
+    }
+
+    // Process NAGs (!, ?, !!, ??, !?, ?!, ⩲, etc.)
+    const nags = [];
+    const nagRegex = /\$\d+|\!+|\?+|\!\?|\?\!/g;
+    let nagMatch;
+
+    while ((nagMatch = nagRegex.exec(processedPgn)) !== null) {
+        const beforeNag = processedPgn.slice(0, nagMatch.index);
+        const moveCount = (beforeNag.match(/\d+\./g) || []).length;
+
+        nags.push({
+            moveNumber: moveCount,
+            nag: nagMatch[0]
+        });
+    }
+
     return {
         event: parsedHeaders.Event || 'Casual Game',
         site: parsedHeaders.Site || 'Unknown',
@@ -76,7 +165,23 @@ const processGame = (gamePgn, gameIndex) => {
         timeControl: parsedHeaders.TimeControl || null,
         termination: parsedHeaders.Termination || null,
         pgn: processedPgn,
-        moves: movesSection // Store the original moves section with annotations
+        // Use original moves section to preserve annotations and formatting
+        moves: originalMoves.replace(/\s+/g, ' ').trim(),
+        annotations: [
+            ...variations.map(v => ({
+                moveNumber: v.moveNumber,
+                variation: v.variation,
+                move: v.move
+            })),
+            ...comments.map(c => ({
+                moveNumber: c.moveNumber,
+                comment: c.comment
+            })),
+            ...nags.map(n => ({
+                moveNumber: n.moveNumber,
+                nag: n.nag
+            }))
+        ]
     };
 };
 

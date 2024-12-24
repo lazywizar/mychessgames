@@ -1,6 +1,18 @@
 const { processGame, processPgnFile } = require('../pgnProcessor');
+const logger = require('../logger');
+
+// Mock the logger to avoid console output during tests
+jest.mock('../logger', () => ({
+    debug: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn()
+}));
 
 describe('PGN Processor', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
     describe('processGame', () => {
         test('should process a valid game', () => {
             const pgn = `[Event "Test Game"]
@@ -139,5 +151,95 @@ describe('PGN Processor', () => {
         test('should throw error for empty content', () => {
             expect(() => processPgnFile('')).toThrow('PGN file is empty');
         });
+    });
+
+    test('processes nested variations correctly', () => {
+        const pgn = `
+[Event "English Tree: sample nested line"]
+[Site "https://lichess.org/study/zw3W5ddH/VYmMfmA6"]
+[Result "*"]
+[ECO "A20"]
+[Opening "English Opening"]
+
+1. c4 e5 (1... e6 2. Nc3) (1... c5 2. g3) 2. Nc3 Nf6 (2... Bb4 3. g3) (2... Bc5 3. e3) 3. g3 Bb4 4. Bg2 Nc6 (4... O-O 5. e4) 5. Nd5 *`;
+
+        const result = processGame(pgn, 0);
+
+        // Verify main line moves with variations
+        expect(result.moves).toBe('1. c4 e5 (1... e6 2. Nc3) (1... c5 2. g3) 2. Nc3 Nf6 (2... Bb4 3. g3) (2... Bc5 3. e3) 3. g3 Bb4 4. Bg2 Nc6 (4... O-O 5. e4) 5. Nd5 *');
+
+        // Verify variations are processed correctly
+        expect(result.annotations).toEqual(
+            expect.arrayContaining([
+                {
+                    moveNumber: 1,
+                    variation: 'e6 2. Nc3',
+                    move: 'c4'
+                },
+                {
+                    moveNumber: 1,
+                    variation: 'c5 2. g3',
+                    move: 'c4'
+                },
+                {
+                    moveNumber: 2,
+                    variation: 'Bb4 3. g3',
+                    move: 'Nc3'
+                },
+                {
+                    moveNumber: 2,
+                    variation: 'Bc5 3. e3',
+                    move: 'Nc3'
+                },
+                {
+                    moveNumber: 4,
+                    variation: 'O-O 5. e4',
+                    move: 'Bg2'
+                }
+            ])
+        );
+    });
+
+    test('handles simple game without variations', () => {
+        const pgn = `
+[Event "Rated Blitz game"]
+[Site "https://lichess.org"]
+[Result "1-0"]
+[ECO "A00"]
+
+1. c4 f5 2. Nc3 Nf6 3. d3 e6 4. g3 *`;
+
+        const result = processGame(pgn, 0);
+
+        // Verify main line moves
+        expect(result.moves).toBe('1. c4 f5 2. Nc3 Nf6 3. d3 e6 4. g3 *');
+
+        // Verify no variations
+        expect(result.annotations.filter(a => a.variation)).toHaveLength(0);
+    });
+
+    test('handles variations starting with black moves', () => {
+        const pgn = `
+[Event "Test Game"]
+[Site "https://lichess.org"]
+[Result "*"]
+
+1. e4 e5 (1...c5 2. Nf3 d6) 2. Nf3 *`;
+
+        const result = processGame(pgn, 0);
+
+        // Verify main line moves with variations
+        expect(result.moves).toBe('1. e4 e5 (1...c5 2. Nf3 d6) 2. Nf3 *');
+
+        // Verify variation is processed correctly
+        expect(result.annotations).toEqual(
+            expect.arrayContaining([
+                {
+                    moveNumber: 1,
+                    variation: 'c5 2. Nf3 d6',
+                    move: 'e4'
+                }
+            ])
+        );
     });
 });

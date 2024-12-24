@@ -1,0 +1,60 @@
+.moves {
+    font-size: 14px;
+    line-height: 1.6;
+    cursor: pointer;
+    padding: 1em;
+}
+
+.move-pair {
+    margin: 0.3em 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+}
+
+.variation {
+    display: block;
+    color: #666;
+    margin-left: 1.5em;
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
+}
+
+.variations {
+    margin-left: 0.5em;
+    display: flex;
+    flex-direction: column;
+}
+
+.move {
+    padding: 2px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.move:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.move.current {
+    background: #fff176;
+}
+
+.move-number {
+    color: #666;
+    margin-right: 0.3em;
+    user-select: none;
+    min-width: 2em;
+    display: inline-block;
+}
+
+.comment, .shapes {
+    margin-left: 0.3em;
+    opacity: 0.7;
+}
+
+.nag {
+    margin-left: 0.2em;
+    color: #666;
+}

@@ -34,7 +34,6 @@ router.get('/', auth, async (req, res) => {
 // Get a specific game by ID
 router.get('/:id', auth, async (req, res) => {
     try {
-        // Validate MongoDB ObjectId
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
             logger.error(`Invalid game ID format: ${req.params.id}`);
             return res.status(400).json({ error: 'Invalid game ID format' });
@@ -52,7 +51,14 @@ router.get('/:id', auth, async (req, res) => {
             return res.status(404).json({ error: 'Game not found' });
         }
 
-        logger.info(`Successfully fetched game ${req.params.id}`);
+        // Add detailed logging of game data
+        logger.info('Game data retrieved:', {
+            id: game._id,
+            pgn: game.pgn,
+            moves: game.moves,
+            annotations: game.annotations
+        });
+
         res.json(game.toAPI());
     } catch (error) {
         logger.error(`Error fetching game ${req.params.id}: ${error.message}`);
@@ -199,10 +205,10 @@ router.post('/upload', auth, upload.single('pgn'), async (req, res) => {
         logger.info(`Processing PGN upload for user ${req.user.username}`);
 
         const { processedGames, errors, summary } = processPgnFile(pgnContent);
-        
+
         if (processedGames.length === 0) {
             logger.error('PGN upload failed - No valid games found', summary);
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'No valid games found in PGN file',
                 details: errors
             });
@@ -232,7 +238,7 @@ router.post('/upload', auth, upload.single('pgn'), async (req, res) => {
             savedGames: savedGames.length,
             username: req.user.username
         });
-        
+
         res.status(201).json({
             message: `Successfully uploaded ${savedGames.length} games${errors.length ? ` with ${errors.length} errors` : ''}`,
             games: savedGames,

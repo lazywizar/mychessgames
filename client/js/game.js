@@ -12,6 +12,149 @@ let selectedMove = null;
 let isDrawing = false;
 let shapes = [];
 
+// Move Tree implementation
+class Node {
+    constructor(move = null, ply = 0) {
+        this.id = Math.random().toString(36).substr(2, 9);
+        this.move = move;  // The move in SAN notation
+        this.ply = ply;    // Half-move number (0 for initial position)
+        this.children = []; // Main line and variations
+        this.comments = [];
+        this.nags = [];    // Numeric Annotation Glyphs
+        this.shapes = [];  // Arrow and circle drawings
+    }
+
+    addChild(move) {
+        const child = new Node(move, this.ply + 1);
+        this.children.push(child);
+        return child;
+    }
+
+    addVariation(moves) {
+        if (!moves.length) return null;
+        const child = new Node(moves[0], this.ply + 1);
+        this.children.push(child);
+
+        let current = child;
+        for (let i = 1; i < moves.length; i++) {
+            current = current.addChild(moves[i]);
+        }
+        return child;
+    }
+}
+
+class MoveTree {
+    constructor() {
+        this.root = new Node();
+        this.currentNode = this.root;
+    }
+
+    addMove(moveObj) {
+        // If moveObj is a string, convert it to an object with from/to properties
+        let move;
+        if (typeof moveObj === 'string') {
+            const tempChess = new Chess(game.fen());
+            move = tempChess.move(moveObj);
+        } else {
+            move = moveObj;
+        }
+
+        if (!move) return null;
+
+        const newNode = new Node(move.san, this.currentNode.ply + 1);
+        newNode.from = move.from;
+        newNode.to = move.to;
+        this.currentNode.children.push(newNode);
+        this.currentNode = newNode;
+        return newNode;
+    }
+
+    addVariation(moves, startPly) {
+        let parentNode = this.findNodeByPly(startPly);
+        if (!parentNode) return null;
+
+        // Save current position
+        const currentFen = game.fen();
+
+        // Set up position at variation start
+        const tempChess = new Chess();
+        const path = this.getPathToNode(parentNode);
+        path.forEach(node => {
+            if (node.move) tempChess.move(node.move);
+        });
+
+        // Create variation
+        let currentNode = parentNode;
+        moves.forEach(move => {
+            try {
+                const moveObj = tempChess.move(move);
+                if (moveObj) {
+                    const newNode = new Node(moveObj.san, currentNode.ply + 1);
+                    newNode.from = moveObj.from;
+                    newNode.to = moveObj.to;
+                    currentNode.children.push(newNode);
+                    currentNode = newNode;
+                }
+            } catch (error) {
+                console.error('Error adding variation move:', move, error);
+            }
+        });
+
+        // Restore original position
+        game.load(currentFen);
+
+        return parentNode.children[parentNode.children.length - 1];
+    }
+
+    getPathToNode(targetNode) {
+        const path = [];
+        let node = targetNode;
+        while (node && node !== this.root) {
+            path.unshift(node);
+            node = this.findParent(node);
+        }
+        return path;
+    }
+
+    findNodeByPly(ply) {
+        const traverse = (node) => {
+            if (node.ply === ply) return node;
+            for (const child of node.children) {
+                const found = traverse(child);
+                if (found) return found;
+            }
+            return null;
+        };
+        return traverse(this.root);
+    }
+
+    getMainLine() {
+        const moves = [];
+        let node = this.currentNode;
+        while (node.move) {
+            moves.unshift(node.move);
+            node = this.findParent(node);
+        }
+        return moves;
+    }
+
+    findParent(targetNode) {
+        const traverse = (node) => {
+            for (const child of node.children) {
+                if (child === targetNode) return node;
+                const found = traverse(child);
+                if (found) return found;
+            }
+            return null;
+        };
+        return traverse(this.root);
+    }
+}
+
+// Initialize moveTree
+let moveTree = new MoveTree();
+let currentNode = null;
+
 // Get game ID from URL
 const urlParams = new URLSearchParams(window.location.search);
 const gameId = urlParams.get('id');
@@ -52,7 +195,6 @@ async function initGame() {
     try {
         // Initialize chess.js first
         game = new Chess();
-        moves = [];  // Initialize moves array
 
         // Fetch game data
         const response = await fetch(`${CONFIG.API_URL}/games/${gameId}`, {
@@ -62,34 +204,40 @@ async function initGame() {
         });
 
         if (!response.ok) {
-            throw new Error(response.status === 404 ? 'Game not found' :
-                          response.status === 401 ? 'Unauthorized' :
-                          'Failed to load game');
+            throw new Error('Failed to load game');
         }
 
         gameData = await response.json();
+        console.log('Game data received:', gameData); // Debug log
 
         // Load PGN and parse moves
         if (gameData.pgn && !game.load_pgn(gameData.pgn)) {
             throw new Error('Invalid PGN format');
         }
 
-        // Set moves from either gameData or chess.js history
-        moves = gameData.moves ?
-            gameData.moves.split(' ').filter(move => move.trim()) :
-            game.history({ verbose: true });
+        // Build move tree from PGN
+        moveTree = new MoveTree();
+        currentNode = moveTree.root;
 
-        console.log('Moves initialized:', moves);
+        // Process main line moves
+        const mainLine = game.history({ verbose: true }); // Get detailed move objects
+        console.log('Main line moves:', mainLine);
 
-        // Process annotations into a more usable format
-        annotations = {};
-        if (gameData.annotations && Array.isArray(gameData.annotations)) {
+        mainLine.forEach(move => {
+            currentNode = moveTree.addMove(move);
+        });
+
+        // Process variations from annotations
+        if (gameData.annotations) {
+            console.log('Processing annotations:', gameData.annotations);
+
             gameData.annotations.forEach(ann => {
-                annotations[ann.moveNumber] = {
-                    comment: ann.comment || '',
-                    nag: ann.nags && ann.nags.length > 0 ? ann.nags[0] : '',
-                    shapes: ann.shapes || []
-                };
+                if (ann.variation) {
+                    console.log(`Adding variation at move ${ann.moveNumber}:`, ann.variation);
+                    const variationMoves = ann.variation.split(' ')
+                        .filter(m => m.trim() && !m.match(/^\d+\./));
+                    moveTree.addVariation(variationMoves, ann.moveNumber);
+                }
             });
         }
 
@@ -109,7 +257,7 @@ async function initGame() {
         updatePosition();
 
     } catch (error) {
-        console.error('Error setting up game:', error);
+        console.error('Error initializing game:', error);
         throw error;
     }
 }
@@ -567,174 +715,170 @@ function displayGameInfo() {
 
 function displayMoves() {
     const movesDiv = document.getElementById('moves');
-    if (!movesDiv || !moves) return;
+    if (!movesDiv || !moveTree) return;
 
     movesDiv.innerHTML = '';
-    let currentIndex = 0;
-    let moveNumber = 1;
 
-    // If no moves, display initial position
-    if (!moves.length) {
-        const moveContainer = document.createElement('div');
-        moveContainer.className = 'move-row';
-        moveContainer.textContent = 'Initial position';
-        movesDiv.appendChild(moveContainer);
-        return;
-    }
+    function renderNode(node, isVariation = false, parentNode = null) {
+        if (!node.move) return '';
 
-    while (currentIndex < moves.length) {
-        const moveContainer = document.createElement('div');
-        moveContainer.className = 'move-row';
+        const ply = node.ply;
+        const moveNumber = Math.floor((ply + 1) / 2);
+        const isWhite = ply % 2 === 1;
 
-        // Move number
-        const numberSpan = document.createElement('span');
-        numberSpan.className = 'move-number';
-        numberSpan.textContent = `${moveNumber}.`;
-        moveContainer.appendChild(numberSpan);
+        let html = '';
 
-        // White's move
-        if (currentIndex < moves.length) {
-            try {
-                const whiteMove = createMoveElement(moves[currentIndex], currentIndex, true);
-                moveContainer.appendChild(whiteMove);
-                currentIndex++;
-            } catch (error) {
-                console.error('Error creating white move:', error);
-            }
+        // Start variation or move pair
+        if (isVariation) {
+            html += '<div class="variation">(';
+        } else if (isWhite) {
+            html += '<div class="move-pair">';
         }
 
-        // Black's move
-        if (currentIndex < moves.length) {
-            try {
-                const blackMove = createMoveElement(moves[currentIndex], currentIndex, false);
-                moveContainer.appendChild(blackMove);
-                currentIndex++;
-            } catch (error) {
-                console.error('Error creating black move:', error);
-            }
+        // Show move number for:
+        // 1. White moves in main line
+        // 2. First move of a variation
+        const showMoveNumber =
+            (isWhite && !isVariation) ||
+            (isVariation && parentNode && node === parentNode.children[parentNode.children.length - 1]);
+
+        if (showMoveNumber || (!isWhite && isVariation)) {
+            html += `<span class="move-number">${moveNumber}${isWhite ? '.' : '...'}</span>`;
         }
 
-        // Display variations if any
-        if (variations[moveNumber]) {
-            variations[moveNumber].forEach(variation => {
-                try {
-                    const variationDiv = document.createElement('div');
-                    variationDiv.className = 'variation';
-                    variation.moves.forEach((move, i) => {
-                        const moveEl = createMoveElement(move, `${moveNumber}-${i}`, i % 2 === 0);
-                        variationDiv.appendChild(moveEl);
-                    });
-                    moveContainer.appendChild(variationDiv);
-                } catch (error) {
-                    console.error('Error creating variation:', error);
+        // Move with annotations
+        html += `<span class="move ${node === currentNode ? 'current' : ''}"
+                       data-node-id="${node.id}">
+                    ${node.move}
+                    ${node.nags.join('')}
+                    ${node.comments.length ? '<span class="comment">💭</span>' : ''}
+                    ${node.shapes.length ? '<span class="shapes">✏️</span>' : ''}
+                </span>`;
+
+        if (node.children.length > 0) {
+            html += ' '; // Space after move
+
+            // Show variations first
+            if (node.children.length > 1) {
+                html += '<div class="variations">';
+                for (let i = 1; i < node.children.length; i++) {
+                    html += renderNode(node.children[i], true, node);
                 }
-            });
+                html += '</div>';
+            }
+
+            // Show main line
+            html += renderNode(node.children[0], isVariation, node);
         }
 
-        movesDiv.appendChild(moveContainer);
-        moveNumber++;
+        // End variation or move pair
+        if (isVariation) {
+            html += ')</div>';
+        } else if (isWhite && !node.children.length) {
+            html += '</div>';
+        }
+
+        return html;
     }
 
-    // Highlight current move
-    const moveElements = movesDiv.querySelectorAll('.move');
-    moveElements.forEach((move, index) => {
-        move.classList.toggle('current', index === currentMove);
+    // Start rendering from the first move
+    if (moveTree.root.children.length > 0) {
+        movesDiv.innerHTML = renderNode(moveTree.root.children[0]);
+    }
+
+    // Add click handlers
+    movesDiv.querySelectorAll('.move').forEach(moveEl => {
+        moveEl.addEventListener('click', () => {
+            const nodeId = moveEl.dataset.nodeId;
+            currentNode = findNodeById(nodeId);
+            updatePosition();
+            displayMoves();
+        });
     });
-
-    // Scroll to current move
-    if (currentMove >= 0) {
-        const currentMoveEl = moveElements[currentMove];
-        if (currentMoveEl) {
-            currentMoveEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }
 }
 
-function createMoveElement(move, index, isWhite) {
-    const moveSpan = document.createElement('span');
-    moveSpan.className = `move ${isWhite ? 'white' : 'black'}`;
-
-    let moveText = move.san;
-
-    // Add NAG symbol if exists
-    if (annotations[index] && annotations[index].nag) {
-        moveText += annotations[index].nag;
+// Add this helper function to find nodes by ID
+function findNodeById(nodeId) {
+    function traverse(node) {
+        if (node.id === nodeId) return node;
+        for (const child of node.children) {
+            const found = traverse(child);
+            if (found) return found;
+        }
+        return null;
     }
-
-    moveSpan.textContent = moveText;
-
-    // Add comment indicator if exists
-    if (annotations[index] && annotations[index].comment) {
-        const commentIcon = document.createElement('span');
-        commentIcon.className = 'comment-icon';
-        commentIcon.textContent = '💭';
-        commentIcon.title = annotations[index].comment;
-        moveSpan.appendChild(commentIcon);
-    }
-
-    // Add shape indicator if exists
-    if (annotations[index] && annotations[index].shapes && annotations[index].shapes.length > 0) {
-        const shapeIcon = document.createElement('span');
-        shapeIcon.className = 'shape-icon';
-        shapeIcon.textContent = '✏️';
-        moveSpan.appendChild(shapeIcon);
-    }
-
-    moveSpan.addEventListener('click', () => {
-        currentMove = typeof index === 'string' ? parseInt(index.split('-')[1]) : index;
-        updatePosition();
-        displayMoves();
-    });
-
-    return moveSpan;
+    return traverse(moveTree.root);
 }
 
 function updatePosition() {
-    if (currentMove === -1) {
-        game.reset();
-    } else {
-        game.reset();
-        for (let i = 0; i <= currentMove; i++) {
-            const move = moves[i];
-            // Handle both simple moves and verbose move objects
-            game.move(typeof move === 'object' ? { from: move.from, to: move.to, promotion: move.promotion } : move);
+    // Reset to initial position
+    game.reset();
+
+    if (currentNode && currentNode.ply > 0) {
+        // Get the path from root to current node
+        const path = [];
+        let node = currentNode;
+
+        while (node && node !== moveTree.root) {
+            path.unshift(node);
+            node = findParentNode(node);
         }
+
+        // Apply all moves in the path
+        path.forEach(node => {
+            try {
+                if (node.move) {
+                    const move = game.move(node.move);
+                    if (move) {
+                        node.from = move.from;
+                        node.to = move.to;
+                    }
+                }
+            } catch (error) {
+                console.error('Error applying move:', node.move, error);
+            }
+        });
     }
 
-    ground.set({
+    // Update Chessground
+    const config = {
         fen: game.fen(),
         turnColor: game.turn() === 'w' ? 'white' : 'black',
         movable: {
             color: 'both',
             dests: getValidMoves()
         }
-    });
+    };
+
+    if (currentNode && currentNode.from && currentNode.to) {
+        config.lastMove = [currentNode.from, currentNode.to];
+    }
+
+    ground.set(config);
 
     // Update shapes and comments
-    if (annotations[currentMove]) {
-        const annotation = annotations[currentMove];
-
-        // Update shapes
-        if (annotation.shapes && Array.isArray(annotation.shapes)) {
-            ground.setShapes(annotation.shapes);
-        } else {
-            ground.setShapes([]);
-        }
-
-        // Update comment
+    if (currentNode) {
+        ground.setShapes(currentNode.shapes || []);
         const commentInput = document.getElementById('moveComment');
         if (commentInput) {
-            commentInput.value = annotation.comment || '';
-        }
-    } else {
-        ground.setShapes([]);
-        const commentInput = document.getElementById('moveComment');
-        if (commentInput) {
-            commentInput.value = '';
+            commentInput.value = currentNode.comments.join('\n') || '';
         }
     }
 
     updateControls();
+}
+
+// Helper function to find parent node
+function findParentNode(targetNode) {
+    function traverse(node) {
+        for (const child of node.children) {
+            if (child === targetNode) return node;
+            const found = traverse(child);
+            if (found) return found;
+        }
+        return null;
+    }
+    return traverse(moveTree.root);
 }
 
 function updateControls() {
