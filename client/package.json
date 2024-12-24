@@ -5,10 +5,18 @@
   "type": "module",
   "scripts": {
     "start": "serve -s .",
-    "dev": "serve ."
+    "dev": "serve .",
+    "test": "jest"
   },
   "dependencies": {
-    "serve": "^14.2.1",
-    "esbuild": "^0.19.11"
+    "esbuild": "^0.19.11",
+    "serve": "^14.2.1"
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
   }
 }

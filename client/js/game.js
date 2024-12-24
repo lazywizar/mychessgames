@@ -719,7 +719,7 @@ function displayMoves() {
 
     movesDiv.innerHTML = '';
 
-    function renderNode(node, isVariation = false, parentNode = null) {
+    function renderNode(node, isVariation = false, parentNode = null, isFirstMove = false) {
         if (!node.move) return '';
 
         const ply = node.ply;
@@ -728,53 +728,51 @@ function displayMoves() {
 
         let html = '';
 
-        // Start variation or move pair
-        if (isVariation) {
-            html += '<div class="variation">(';
-        } else if (isWhite) {
-            html += '<div class="move-pair">';
+        // Start new line for main line moves
+        if (!isVariation && isWhite) {
+            html += '<div class="move-line">';
         }
 
-        // Show move number for:
-        // 1. White moves in main line
-        // 2. First move of a variation
-        const showMoveNumber =
-            (isWhite && !isVariation) ||
-            (isVariation && parentNode && node === parentNode.children[parentNode.children.length - 1]);
+        // Start variation
+        if (isVariation && isFirstMove) {
+            html += '<div class="variation">(';
+        }
 
-        if (showMoveNumber || (!isWhite && isVariation)) {
+        // Add move number
+        if (isWhite || isVariation) {
             html += `<span class="move-number">${moveNumber}${isWhite ? '.' : '...'}</span>`;
         }
 
-        // Move with annotations
+        // Add the move
         html += `<span class="move ${node === currentNode ? 'current' : ''}"
                        data-node-id="${node.id}">
                     ${node.move}
-                    ${node.nags.join('')}
-                    ${node.comments.length ? '<span class="comment">💭</span>' : ''}
-                    ${node.shapes.length ? '<span class="shapes">✏️</span>' : ''}
                 </span>`;
 
-        if (node.children.length > 0) {
-            html += ' '; // Space after move
+        // Add space after move
+        html += ' ';
 
+        // Handle variations and main line
+        if (node.children.length > 0) {
             // Show variations first
             if (node.children.length > 1) {
-                html += '<div class="variations">';
+                // Process all variations (non-main line moves)
                 for (let i = 1; i < node.children.length; i++) {
-                    html += renderNode(node.children[i], true, node);
+                    html += renderNode(node.children[i], true, node, true);
                 }
-                html += '</div>';
             }
 
-            // Show main line
-            html += renderNode(node.children[0], isVariation, node);
+            // Continue with main line
+            html += renderNode(node.children[0], isVariation, node, false);
         }
 
-        // End variation or move pair
-        if (isVariation) {
+        // Close variation
+        if (isVariation && isFirstMove) {
             html += ')</div>';
-        } else if (isWhite && !node.children.length) {
+        }
+
+        // Close main line move pair
+        if (!isVariation && isWhite && !node.children.length) {
             html += '</div>';
         }
 

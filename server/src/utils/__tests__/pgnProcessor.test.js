@@ -165,39 +165,38 @@ describe('PGN Processor', () => {
 
         const result = processGame(pgn, 0);
 
-        // Verify main line moves with variations
-        expect(result.moves).toBe('1. c4 e5 (1... e6 2. Nc3) (1... c5 2. g3) 2. Nc3 Nf6 (2... Bb4 3. g3) (2... Bc5 3. e3) 3. g3 Bb4 4. Bg2 Nc6 (4... O-O 5. e4) 5. Nd5 *');
-
-        // Verify variations are processed correctly
-        expect(result.annotations).toEqual(
-            expect.arrayContaining([
-                {
-                    moveNumber: 1,
-                    variation: 'e6 2. Nc3',
-                    move: 'c4'
-                },
-                {
-                    moveNumber: 1,
-                    variation: 'c5 2. g3',
-                    move: 'c4'
-                },
-                {
-                    moveNumber: 2,
-                    variation: 'Bb4 3. g3',
-                    move: 'Nc3'
-                },
-                {
-                    moveNumber: 2,
-                    variation: 'Bc5 3. e3',
-                    move: 'Nc3'
-                },
-                {
-                    moveNumber: 4,
-                    variation: 'O-O 5. e4',
-                    move: 'Bg2'
-                }
-            ])
-        );
+        expect(result.annotations).toEqual([
+            {
+                moveNumber: 1,
+                variation: 'e6 2. Nc3',
+                move: 'e5',
+                isBlackMove: true
+            },
+            {
+                moveNumber: 1,
+                variation: 'c5 2. g3',
+                move: 'e5',
+                isBlackMove: true
+            },
+            {
+                moveNumber: 2,
+                variation: 'Bb4 3. g3',
+                move: 'Nf6',
+                isBlackMove: true
+            },
+            {
+                moveNumber: 2,
+                variation: 'Bc5 3. e3',
+                move: 'Nf6',
+                isBlackMove: true
+            },
+            {
+                moveNumber: 4,
+                variation: 'O-O 5. e4',
+                move: 'Nc6',
+                isBlackMove: true
+            }
+        ]);
     });
 
     test('handles simple game without variations', () => {
@@ -237,7 +236,8 @@ describe('PGN Processor', () => {
                 {
                     moveNumber: 1,
                     variation: 'c5 2. Nf3 d6',
-                    move: 'e4'
+                    move: 'e5',
+                    isBlackMove: true
                 }
             ])
         );

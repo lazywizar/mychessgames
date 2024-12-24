@@ -1,29 +1,20 @@
 .moves {
     font-size: 14px;
     line-height: 1.6;
-    cursor: pointer;
     padding: 1em;
 }
 
-.move-pair {
+.move-line {
+    display: block;
     margin: 0.3em 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
 }
 
 .variation {
     display: block;
     color: #666;
-    margin-left: 1.5em;
-    margin-top: 0.2em;
-    margin-bottom: 0.2em;
-}
-
-.variations {
-    margin-left: 0.5em;
-    display: flex;
-    flex-direction: column;
+    margin: 0.2em 0 0.2em 1.5em;
+    padding-left: 0.5em;
+    border-left: 2px solid #eee;
 }
 
 .move {
@@ -31,6 +22,7 @@
     border-radius: 3px;
     white-space: nowrap;
     display: inline-block;
+    cursor: pointer;
 }
 
 .move:hover {
@@ -45,8 +37,6 @@
     color: #666;
     margin-right: 0.3em;
     user-select: none;
-    min-width: 2em;
-    display: inline-block;
 }
 
 .comment, .shapes {

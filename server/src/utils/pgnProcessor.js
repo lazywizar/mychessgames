@@ -76,48 +76,102 @@ const processGame = (gamePgn, gameIndex) => {
         let depth = 0;
         let variationStart = -1;
         const vars = [];
+        let mainLineTokens = [];  // Keep track of main line moves
 
-        for (let i = 0; i < pgn.length; i++) {
-            if (pgn[i] === '(') {
+        // Helper to clean up move text
+        const cleanMove = move => move.replace(/[()]/g, '').trim();
+
+        // Split into tokens but preserve "..." in black moves
+        const tokens = pgn.split(/(\s+|\(|\))/)
+            .filter(t => t && !t.match(/^\s*$/))
+            .map(t => t.trim());
+
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
+
+            if (token === '(') {
                 if (depth === 0) {
-                    const beforeVar = pgn.slice(0, i);
-                    const moveMatches = beforeVar.match(/(\d+)\./g);
-                    if (moveMatches) {
-                        const lastMoveNum = parseInt(moveMatches[moveMatches.length - 1]);
-                        const nextText = pgn.slice(i + 1).trim();
-                        const isBlackMove = nextText.match(/^\d+\s*\.\.\./);
-                        currentMoveNumber = isBlackMove ? lastMoveNum : lastMoveNum;
+                    // Find the last black move in the main line
+                    let lastMainMove = null;
+                    let lastMoveNumber = 0;
+
+                    for (let j = mainLineTokens.length - 1; j >= 0; j--) {
+                        const t = mainLineTokens[j];
+                        if (!t.match(/^[\d.()]+$/) && !t.includes('...')) {
+                            // Found a move
+                            if (lastMainMove === null) {
+                                lastMainMove = cleanMove(t);
+                                // Look back for the move number
+                                for (let k = j; k >= 0; k--) {
+                                    if (mainLineTokens[k].match(/^\d+\./)) {
+                                        lastMoveNumber = parseInt(mainLineTokens[k]);
+                                        break;
+                                    }
+                                }
+                                break;
+                            }
+                        }
                     }
                     variationStart = i;
-                }
-                depth++;
-            } else if (pgn[i] === ')') {
-                depth--;
-                if (depth === 0 && variationStart !== -1) {
-                    const content = pgn.slice(variationStart + 1, i).trim();
                     vars.push({
-                        moveNumber: currentMoveNumber,
-                        content: content,
-                        mainMove: chess.history()[currentMoveNumber - 1]
+                        moveNumber: lastMoveNumber,
+                        move: lastMainMove,
+                        startIndex: i
                     });
                 }
+                depth++;
+            } else if (token === ')') {
+                depth--;
+                if (depth === 0 && variationStart !== -1) {
+                    const varInfo = vars.find(v => v.startIndex === variationStart);
+                    if (varInfo) {
+                        const variationTokens = tokens.slice(variationStart + 1, i);
+                        const content = variationTokens
+                            .map(t => {
+                                if (t.match(/^\d+\.\.\./)) {
+                                    return t.replace(/^\d+\.\.\.\s*/, '');
+                                }
+                                return t;
+                            })
+                            .filter(t => {
+                                if (t === '(' || t === ')') return false;
+                                if (t === '...') return false;
+                                return true;
+                            })
+                            .join(' ')
+                            .trim();
+
+                        varInfo.content = content;
+                    }
+                    variationStart = -1;
+                }
+            } else if (depth === 0 && !token.match(/^\s*$/)) {
+                // Keep track of main line moves
+                mainLineTokens.push(token);
             }
         }
-        return vars;
+
+        return vars.filter(v => v.content).map(v => ({
+            moveNumber: v.moveNumber,
+            content: v.content,
+            move: v.move,
+            isBlackMove: true
+        }));
     }
 
     const foundVariations = findVariations(pgnWithoutComments);
 
     foundVariations.forEach(v => {
+        // Clean up the variation but preserve the moves
         const cleanedVariation = v.content
-            .replace(/^\d+\s*\.+\s*/, '')
             .replace(/\s+/g, ' ')
             .trim();
 
         variations.push({
             moveNumber: v.moveNumber,
             variation: cleanedVariation,
-            move: v.mainMove
+            move: v.move,
+            isBlackMove: true
         });
     });
 
@@ -171,7 +225,8 @@ const processGame = (gamePgn, gameIndex) => {
             ...variations.map(v => ({
                 moveNumber: v.moveNumber,
                 variation: v.variation,
-                move: v.move
+                move: v.move,
+                isBlackMove: v.isBlackMove
             })),
             ...comments.map(c => ({
                 moveNumber: c.moveNumber,
