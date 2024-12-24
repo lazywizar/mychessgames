@@ -16,12 +16,14 @@ let shapes = [];
 class Node {
     constructor(move = null, ply = 0) {
         this.id = Math.random().toString(36).substr(2, 9);
-        this.move = move;  // The move in SAN notation
-        this.ply = ply;    // Half-move number (0 for initial position)
-        this.children = []; // Main line and variations
+        this.move = move;
+        this.ply = ply;
+        this.children = [];
         this.comments = [];
-        this.nags = [];    // Numeric Annotation Glyphs
-        this.shapes = [];  // Arrow and circle drawings
+        this.nags = [];
+        this.shapes = [];
+        this.isWhite = ply % 2 === 1;
+        this.moveNumber = Math.floor((ply + 1) / 2);
     }
 
     addChild(move) {
@@ -69,41 +71,17 @@ class MoveTree {
         return newNode;
     }
 
-    addVariation(moves, startPly) {
-        let parentNode = this.findNodeByPly(startPly);
-        if (!parentNode) return null;
+    addVariation(moves, parentNode) {
+        if (!moves.length || !parentNode) return null;
 
-        // Save current position
-        const currentFen = game.fen();
+        const child = new Node(moves[0], parentNode.ply + 1);
+        parentNode.children.push(child);
 
-        // Set up position at variation start
-        const tempChess = new Chess();
-        const path = this.getPathToNode(parentNode);
-        path.forEach(node => {
-            if (node.move) tempChess.move(node.move);
-        });
-
-        // Create variation
-        let currentNode = parentNode;
-        moves.forEach(move => {
-            try {
-                const moveObj = tempChess.move(move);
-                if (moveObj) {
-                    const newNode = new Node(moveObj.san, currentNode.ply + 1);
-                    newNode.from = moveObj.from;
-                    newNode.to = moveObj.to;
-                    currentNode.children.push(newNode);
-                    currentNode = newNode;
-                }
-            } catch (error) {
-                console.error('Error adding variation move:', move, error);
-            }
-        });
-
-        // Restore original position
-        game.load(currentFen);
-
-        return parentNode.children[parentNode.children.length - 1];
+        let current = child;
+        for (let i = 1; i < moves.length; i++) {
+            current = current.addChild(moves[i]);
+        }
+        return child;
     }
 
     getPathToNode(targetNode) {
@@ -151,8 +129,8 @@ class MoveTree {
     }
 }
 
-// Initialize moveTree
-let moveTree = new MoveTree();
+// Initialize global variables
+let moveTree = null;
 let currentNode = null;
 
 // Get game ID from URL
@@ -233,10 +211,16 @@ async function initGame() {
 
             gameData.annotations.forEach(ann => {
                 if (ann.variation) {
-                    console.log(`Adding variation at move ${ann.moveNumber}:`, ann.variation);
+                    const isBlackMove = ann.isBlackMove;
+                    console.log(`Adding variation at move ${ann.moveNumber} (${isBlackMove ? 'Black' : 'White'}):`, ann.variation);
                     const variationMoves = ann.variation.split(' ')
                         .filter(m => m.trim() && !m.match(/^\d+\./));
-                    moveTree.addVariation(variationMoves, ann.moveNumber);
+
+                    // Find the correct node to add the variation to
+                    let parentNode = moveTree.findNodeByPly(ann.moveNumber * 2 - (isBlackMove ? 1 : 2));
+                    if (parentNode) {
+                        moveTree.addVariation(variationMoves, parentNode);
+                    }
                 }
             });
         }
@@ -733,42 +717,38 @@ function displayMoves() {
             html += '<div class="move-line">';
         }
 
-        // Start variation
-        if (isVariation && isFirstMove) {
-            html += '<div class="variation">(';
-        }
-
-        // Add move number
+        // Add move number for white moves or variations
         if (isWhite || isVariation) {
             html += `<span class="move-number">${moveNumber}${isWhite ? '.' : '...'}</span>`;
         }
 
         // Add the move
         html += `<span class="move ${node === currentNode ? 'current' : ''}"
-                       data-node-id="${node.id}">
-                    ${node.move}
-                </span>`;
+                       data-node-id="${node.id}">${node.move}</span>`;
 
-        // Add space after move
         html += ' ';
 
-        // Handle variations and main line
         if (node.children.length > 0) {
-            // Show variations first
+            const mainLineMove = node.children[0];
+
+            // Show variations before continuing with main line
             if (node.children.length > 1) {
-                // Process all variations (non-main line moves)
+                html += '<div class="variations">';
                 for (let i = 1; i < node.children.length; i++) {
-                    html += renderNode(node.children[i], true, node, true);
+                    const variationNode = node.children[i];
+                    html += `<div class="variation">(${moveNumber}${isWhite ? '.' : '...'}${variationNode.move}`;
+                    if (variationNode.children.length > 0) {
+                        html += ' ' + renderNode(variationNode.children[0], true, variationNode, false);
+                    }
+                    html += ')</div>';
                 }
+                html += '</div>';
             }
 
             // Continue with main line
-            html += renderNode(node.children[0], isVariation, node, false);
-        }
-
-        // Close variation
-        if (isVariation && isFirstMove) {
-            html += ')</div>';
+            if (mainLineMove) {
+                html += renderNode(mainLineMove, isVariation, node, false);
+            }
         }
 
         // Close main line move pair
@@ -890,4 +870,18 @@ function updateControls() {
     if (prevBtn) prevBtn.disabled = currentMove <= -1;
     if (nextBtn) nextBtn.disabled = currentMove >= moves.length - 1;
     if (endBtn) endBtn.disabled = currentMove >= moves.length - 1;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        Node,
+        MoveTree,
+        displayMoves,
+        // Export these for testing
+        setMoveTree: (tree) => { moveTree = tree; },
+        setCurrentNode: (node) => { currentNode = node; }
+    };
+} else {
+    window.Node = Node;
+    window.MoveTree = MoveTree;
 }
