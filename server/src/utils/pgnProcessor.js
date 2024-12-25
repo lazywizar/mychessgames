@@ -171,7 +171,7 @@ const processGame = (gamePgn, gameIndex) => {
             moveNumber: v.moveNumber,
             variation: cleanedVariation,
             move: v.move,
-            isBlackMove: true
+            isBlackMove: v.isBlackMove
         });
     });
 
@@ -226,15 +226,20 @@ const processGame = (gamePgn, gameIndex) => {
                 moveNumber: v.moveNumber,
                 variation: v.variation,
                 move: v.move,
-                isBlackMove: v.isBlackMove
+                isBlackMove: v.isBlackMove || false,
+                nags: [],
+                shapes: []
             })),
             ...comments.map(c => ({
                 moveNumber: c.moveNumber,
-                comment: c.comment
+                comment: c.comment,
+                nags: [],
+                shapes: []
             })),
             ...nags.map(n => ({
                 moveNumber: n.moveNumber,
-                nag: n.nag
+                nag: n.nag,
+                shapes: []
             }))
         ]
     };

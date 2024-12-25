@@ -21,6 +21,8 @@ const annotationSchema = new mongoose.Schema({
     comment: String,
     nags: [String], // Numeric Annotation Glyphs (e.g., !!, !?, ?!, etc.)
     variations: [String],
+    variation: String,
+    isBlackMove: Boolean,
     shapes: [shapeSchema]
 }, { _id: false });
 
@@ -92,6 +94,7 @@ const gameSchema = new mongoose.Schema({
         moveNumber: Number,
         variation: String,
         comment: String,
+        isBlackMove: Boolean,
         nags: [String],
         shapes: [{
             brush: String,

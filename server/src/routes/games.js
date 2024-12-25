@@ -56,6 +56,7 @@ router.get('/:id', auth, async (req, res) => {
             id: game._id,
             pgn: game.pgn,
             moves: game.moves,
+            isBlackMove: game.isBlackMove,
             annotations: game.annotations
         });
 
@@ -125,7 +126,7 @@ router.patch('/:id/annotations', auth, async (req, res) => {
         // Process each annotation to ensure it has required fields
         const processedAnnotations = annotations.map(ann => {
             // If the annotation already has all required fields, use it as is
-            if (ann.move && ann.moveNumber !== undefined) {
+            if (ann.move && ann.moveNumber !== undefined && ann.isBlackMove !== undefined) {
                 return ann;
             }
 
@@ -139,14 +140,19 @@ router.patch('/:id/annotations', auth, async (req, res) => {
                 moveNumber: ann.moveNumber,
                 comment: ann.comment || '',
                 nags: ann.nags || [],
-                variations: ann.variations || []
+                variations: ann.variations || [],
+                isBlackMove: ann.isBlackMove
             };
         });
 
         game.annotations = processedAnnotations;
         await game.save();
 
-        logger.info(`Successfully updated annotations for game ${req.params.id}`);
+        logger.info(`Successfully updated annotations for game ${req.params.id}`, {
+            annotationCount: processedAnnotations.length,
+            annotations: processedAnnotations
+        });
+
         res.json(game.toAPI());
     } catch (error) {
         logger.error(`Error updating annotations for game ${req.params.id}: ${error.message}`);

@@ -170,31 +170,41 @@ describe('PGN Processor', () => {
                 moveNumber: 1,
                 variation: 'e6 2. Nc3',
                 move: 'e5',
-                isBlackMove: true
+                isBlackMove: true,
+                nags: [],
+                shapes: []
             },
             {
                 moveNumber: 1,
                 variation: 'c5 2. g3',
                 move: 'e5',
-                isBlackMove: true
+                isBlackMove: true,
+                nags: [],
+                shapes: []
             },
             {
                 moveNumber: 2,
                 variation: 'Bb4 3. g3',
                 move: 'Nf6',
-                isBlackMove: true
+                isBlackMove: true,
+                nags: [],
+                shapes: []
             },
             {
                 moveNumber: 2,
                 variation: 'Bc5 3. e3',
                 move: 'Nf6',
-                isBlackMove: true
+                isBlackMove: true,
+                nags: [],
+                shapes: []
             },
             {
                 moveNumber: 4,
                 variation: 'O-O 5. e4',
                 move: 'Nc6',
-                isBlackMove: true
+                isBlackMove: true,
+                nags: [],
+                shapes: []
             }
         ]);
     });
@@ -237,9 +247,31 @@ describe('PGN Processor', () => {
                     moveNumber: 1,
                     variation: 'c5 2. Nf3 d6',
                     move: 'e5',
-                    isBlackMove: true
+                    isBlackMove: true,
+                    nags: [],
+                    shapes: []
                 }
             ])
         );
+    });
+
+    test('processes variations with isBlackMove property correctly', () => {
+        const pgn = `
+[Event "Test Game"]
+[Site "https://lichess.org"]
+[Result "*"]
+
+1. e4 e5 (1...c5 2. Nf3 d6) 2. Nf3 *`;
+
+        const result = processGame(pgn, 0);
+
+        expect(result.annotations).toContainEqual({
+            moveNumber: 1,
+            variation: 'c5 2. Nf3 d6',
+            move: 'e5',
+            isBlackMove: true,
+            nags: [],
+            shapes: []
+        });
     });
 });
