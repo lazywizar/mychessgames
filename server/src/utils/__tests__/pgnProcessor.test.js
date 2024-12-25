@@ -274,4 +274,84 @@ describe('PGN Processor', () => {
             shapes: []
         });
     });
+
+    test('correctly identifies black and white variations', () => {
+        const pgn = `
+[Event "Test Game"]
+[Site "https://lichess.org"]
+[Result "*"]
+
+1. e4 e5 (1. d4 d5) (1...c5 2. Nf3) 2. Nf3 *`;
+
+        const result = processGame(pgn, 0);
+
+        expect(result.annotations).toContainEqual({
+            moveNumber: 1,
+            variation: 'd4 d5',
+            move: 'e4',
+            isBlackMove: false,
+            nags: [],
+            shapes: []
+        });
+
+        expect(result.annotations).toContainEqual({
+            moveNumber: 1,
+            variation: 'c5 2. Nf3',
+            move: 'e5',
+            isBlackMove: true,
+            nags: [],
+            shapes: []
+        });
+    });
+
+    test('correctly identifies black and white variations at different points', () => {
+        const pgn = `
+[Event "Test Game"]
+[Site "https://lichess.org"]
+[Result "*"]
+
+1. e4 e5 (1. d4 d5) (1...c5 2. Nf3) 2. Nf3 Nc6 (2. Nc3 Nf6) (2...Nf6 3. Nc3) 3. Bb5 *`;
+
+        const result = processGame(pgn, 0);
+
+        // White's first move variation
+        expect(result.annotations).toContainEqual({
+            moveNumber: 1,
+            variation: 'd4 d5',
+            move: 'e4',
+            isBlackMove: false,
+            nags: [],
+            shapes: []
+        });
+
+        // Black's first move variation
+        expect(result.annotations).toContainEqual({
+            moveNumber: 1,
+            variation: 'c5 2. Nf3',
+            move: 'e5',
+            isBlackMove: true,
+            nags: [],
+            shapes: []
+        });
+
+        // White's second move variation
+        expect(result.annotations).toContainEqual({
+            moveNumber: 2,
+            variation: 'Nc3 Nf6',
+            move: 'Nf3',
+            isBlackMove: false,
+            nags: [],
+            shapes: []
+        });
+
+        // Black's second move variation
+        expect(result.annotations).toContainEqual({
+            moveNumber: 2,
+            variation: 'Nf6 3. Nc3',
+            move: 'Nc6',
+            isBlackMove: true,
+            nags: [],
+            shapes: []
+        });
+    });
 });

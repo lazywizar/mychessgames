@@ -76,7 +76,7 @@ const processGame = (gamePgn, gameIndex) => {
         let depth = 0;
         let variationStart = -1;
         const vars = [];
-        let mainLineTokens = [];  // Keep track of main line moves
+        let mainLineTokens = [];
 
         // Helper to clean up move text
         const cleanMove = move => move.replace(/[()]/g, '').trim();
@@ -94,6 +94,7 @@ const processGame = (gamePgn, gameIndex) => {
                     // Find the last black move in the main line
                     let lastMainMove = null;
                     let lastMoveNumber = 0;
+                    let isBlackMove = false;
 
                     for (let j = mainLineTokens.length - 1; j >= 0; j--) {
                         const t = mainLineTokens[j];
@@ -101,7 +102,7 @@ const processGame = (gamePgn, gameIndex) => {
                             // Found a move
                             if (lastMainMove === null) {
                                 lastMainMove = cleanMove(t);
-                                // Look back for the move number
+                                // Look back for the move number and check if it's a black move
                                 for (let k = j; k >= 0; k--) {
                                     if (mainLineTokens[k].match(/^\d+\./)) {
                                         lastMoveNumber = parseInt(mainLineTokens[k]);
@@ -112,11 +113,21 @@ const processGame = (gamePgn, gameIndex) => {
                             }
                         }
                     }
+
                     variationStart = i;
+                    // Look ahead to check if the variation starts with "..."
+                    for (let j = i + 1; j < tokens.length && j < i + 4; j++) {
+                        if (tokens[j].includes('...')) {
+                            isBlackMove = true;
+                            break;
+                        }
+                    }
+
                     vars.push({
                         moveNumber: lastMoveNumber,
                         move: lastMainMove,
-                        startIndex: i
+                        startIndex: i,
+                        isBlackMove: isBlackMove
                     });
                 }
                 depth++;
@@ -155,7 +166,7 @@ const processGame = (gamePgn, gameIndex) => {
             moveNumber: v.moveNumber,
             content: v.content,
             move: v.move,
-            isBlackMove: true
+            isBlackMove: v.isBlackMove
         }));
     }
 
