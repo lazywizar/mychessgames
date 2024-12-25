@@ -718,9 +718,13 @@ function displayMoves() {
             html += '<div class="move-line">';
         }
 
-        // Add move number and dots logic for main line
+        // Add move number for main line or variation
         if (isWhite || isVariation) {
-            html += `<span class="move-number">${moveNumber}${isWhite ? '.' : '...'}</span>`;
+            if (isVariation && !isWhite) {
+                html += `<span class="move-number">${moveNumber}...</span>`;
+            } else {
+                html += `<span class="move-number">${moveNumber}.</span>`;
+            }
         }
 
         // Add the move
@@ -728,41 +732,38 @@ function displayMoves() {
                        data-node-id="${node.id}"
                        data-ply="${node.ply}">${node.move}</span>`;
 
+        // Add space after move
         html += ' ';
 
+        // Show variations immediately after the current move
+        if (node.children.length > 1) {
+            html += '<div class="variations">';
+            for (let i = 1; i < node.children.length; i++) {
+                const variationNode = node.children[i];
+                html += `<div class="variation" data-parent-id="${node.id}">(`;
+                
+                // For variations starting with black's move, show the move number with dots
+                if (variationNode.isBlackMove) {
+                    html += `${moveNumber}... `;
+                }
+                
+                // Add the variation move
+                html += `<span class="move variation-move"
+                              data-node-id="${variationNode.id}"
+                              data-ply="${variationNode.ply}">${variationNode.move}</span>`;
+
+                // Add subsequent moves in the variation
+                if (variationNode.children.length > 0) {
+                    html += ' ' + renderNode(variationNode.children[0], true, variationNode, false);
+                }
+                html += ')</div>';
+            }
+            html += '</div>';
+        }
+
+        // Continue with main line if it exists
         if (node.children.length > 0) {
             const mainLineMove = node.children[0];
-
-            // Show variations before continuing with main line
-            if (node.children.length > 1) {
-                html += '<div class="variations">';
-                for (let i = 1; i < node.children.length; i++) {
-                    const variationNode = node.children[i];
-
-                    html += `<div class="variation" data-parent-id="${node.id}">(`;
-
-                    // For variations: show move number for white moves, show number + dots for black moves
-                    if (variationNode.isBlackMove) {
-                        html += `${moveNumber}...`;  // Add dots without space
-                    } else {
-                        html += `${moveNumber}.`;    // Add number and dot without space
-                    }
-
-                    // Add the move as a clickable span
-                    html += `<span class="move variation-move"
-                                  data-node-id="${variationNode.id}"
-                                  data-ply="${variationNode.ply}">${variationNode.move}</span>`;
-
-                    // Add subsequent moves in the variation
-                    if (variationNode.children.length > 0) {
-                        html += ' ' + renderNode(variationNode.children[0], true, variationNode, false);
-                    }
-                    html += ')</div>';
-                }
-                html += '</div>';
-            }
-
-            // Continue with main line
             if (mainLineMove) {
                 html += renderNode(mainLineMove, isVariation, node, false);
             }
