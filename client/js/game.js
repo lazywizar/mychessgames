@@ -724,7 +724,8 @@ function displayMoves() {
 
         // Add the move
         html += `<span class="move ${node === currentNode ? 'current' : ''}"
-                       data-node-id="${node.id}">${node.move}</span>`;
+                       data-node-id="${node.id}"
+                       data-ply="${node.ply}">${node.move}</span>`;
 
         html += ' ';
 
@@ -736,7 +737,13 @@ function displayMoves() {
                 html += '<div class="variations">';
                 for (let i = 1; i < node.children.length; i++) {
                     const variationNode = node.children[i];
-                    html += `<div class="variation">(${moveNumber}${isWhite ? '.' : '...'}${variationNode.move}`;
+                    html += `<div class="variation" data-parent-id="${node.id}">
+                        (${moveNumber}${isWhite ? '.' : '...'}
+                        <span class="move variation-move"
+                              data-node-id="${variationNode.id}"
+                              data-ply="${variationNode.ply}">${variationNode.move}</span>`;
+
+                    // Add subsequent moves in the variation
                     if (variationNode.children.length > 0) {
                         html += ' ' + renderNode(variationNode.children[0], true, variationNode, false);
                     }
@@ -764,13 +771,46 @@ function displayMoves() {
         movesDiv.innerHTML = renderNode(moveTree.root.children[0]);
     }
 
-    // Add click handlers
+    // Add click handlers for all moves including variations
     movesDiv.querySelectorAll('.move').forEach(moveEl => {
-        moveEl.addEventListener('click', () => {
+        moveEl.addEventListener('click', async () => {
             const nodeId = moveEl.dataset.nodeId;
-            currentNode = findNodeById(nodeId);
-            updatePosition();
+            const targetNode = findNodeById(nodeId);
+
+            if (!targetNode) return;
+
+            // Get the path from root to target node
+            const path = moveTree.getPathToNode(targetNode);
+
+            // Reset to initial position
+            game.reset();
+            ground.set({ fen: game.fen() });
+            currentNode = moveTree.root;
+
+            // Apply each move in the path
+            for (const node of path) {
+                try {
+                    const move = game.move(node.move);
+                    if (move) {
+                        currentNode = node;
+                        ground.set({
+                            fen: game.fen(),
+                            turnColor: game.turn() === 'w' ? 'white' : 'black',
+                            movable: {
+                                color: game.turn() === 'w' ? 'white' : 'black',
+                                dests: getValidMoves()
+                            },
+                            lastMove: [move.from, move.to]
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error applying move:', node.move, error);
+                }
+            }
+
+            // Update the display
             displayMoves();
+            updateControls();
         });
     });
 }
