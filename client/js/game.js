@@ -23,6 +23,7 @@ class Node {
         this.nags = [];
         this.shapes = [];
         this.isWhite = ply % 2 === 1;
+        this.isBlackMove = ply % 2 === 0;
         this.moveNumber = Math.floor((ply + 1) / 2);
     }
 
@@ -717,7 +718,7 @@ function displayMoves() {
             html += '<div class="move-line">';
         }
 
-        // Add move number for white moves or variations
+        // Add move number and dots logic for main line
         if (isWhite || isVariation) {
             html += `<span class="move-number">${moveNumber}${isWhite ? '.' : '...'}</span>`;
         }
@@ -737,11 +738,20 @@ function displayMoves() {
                 html += '<div class="variations">';
                 for (let i = 1; i < node.children.length; i++) {
                     const variationNode = node.children[i];
-                    html += `<div class="variation" data-parent-id="${node.id}">
-                        (${moveNumber}${isWhite ? '.' : '...'}
-                        <span class="move variation-move"
-                              data-node-id="${variationNode.id}"
-                              data-ply="${variationNode.ply}">${variationNode.move}</span>`;
+
+                    html += `<div class="variation" data-parent-id="${node.id}">(`;
+
+                    // For variations: show move number for white moves, show number + dots for black moves
+                    if (variationNode.isBlackMove) {
+                        html += `${moveNumber}...`;  // Add dots without space
+                    } else {
+                        html += `${moveNumber}.`;    // Add number and dot without space
+                    }
+
+                    // Add the move as a clickable span
+                    html += `<span class="move variation-move"
+                                  data-node-id="${variationNode.id}"
+                                  data-ply="${variationNode.ply}">${variationNode.move}</span>`;
 
                     // Add subsequent moves in the variation
                     if (variationNode.children.length > 0) {

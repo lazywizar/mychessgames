@@ -31,12 +31,14 @@ describe('Move Display', () => {
 
         // First variation: 1...e6 2.Nc3
         let variation1 = new Node('e6', 2);
+        variation1.isBlackMove = true;  // Explicitly set isBlackMove
         let variation1Move2 = new Node('Nc3', 3);
         variation1.children.push(variation1Move2);
         blackResponse.children.push(variation1);
 
         // Second variation: 1...c5 2.g3
         let variation2 = new Node('c5', 2);
+        variation2.isBlackMove = true;  // Explicitly set isBlackMove
         let variation2Move2 = new Node('g3', 3);
         variation2.children.push(variation2Move2);
         blackResponse.children.push(variation2);
