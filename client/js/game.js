@@ -718,7 +718,10 @@ function displayMoves() {
             html += '<div class="move-line">';
         }
 
-        // Add move number for main line or variation
+        // Add move number for:
+        // 1. White moves in main line
+        // 2. First move in a variation
+        // 3. Black moves in variation if previous move not shown
         if (isWhite || isVariation) {
             if (isVariation && !isWhite) {
                 html += `<span class="move-number">${moveNumber}...</span>`;
@@ -727,12 +730,11 @@ function displayMoves() {
             }
         }
 
-        // Add the move
+        // Add the move with appropriate spacing
+        html += ' ';
         html += `<span class="move ${node === currentNode ? 'current' : ''}"
                        data-node-id="${node.id}"
                        data-ply="${node.ply}">${node.move}</span>`;
-
-        // Add space after move
         html += ' ';
 
         // Show variations immediately after the current move
@@ -741,13 +743,15 @@ function displayMoves() {
             for (let i = 1; i < node.children.length; i++) {
                 const variationNode = node.children[i];
                 html += `<div class="variation" data-parent-id="${node.id}">(`;
-                
-                // For variations starting with black's move, show the move number with dots
+
+                // For variations, always show move number for white moves
+                // or black moves that start the variation
                 if (variationNode.isBlackMove) {
-                    html += `${moveNumber}... `;
+                    html += `${moveNumber}...`;
+                } else {
+                    html += `${moveNumber}. `;
                 }
-                
-                // Add the variation move
+
                 html += `<span class="move variation-move"
                               data-node-id="${variationNode.id}"
                               data-ply="${variationNode.ply}">${variationNode.move}</span>`;
@@ -765,6 +769,10 @@ function displayMoves() {
         if (node.children.length > 0) {
             const mainLineMove = node.children[0];
             if (mainLineMove) {
+                // After a white's variation, show move number with dots for black's move
+                if (node.children.length > 1 && !node.isBlackMove) {
+                    html += `${moveNumber}... `;
+                }
                 html += renderNode(mainLineMove, isVariation, node, false);
             }
         }
