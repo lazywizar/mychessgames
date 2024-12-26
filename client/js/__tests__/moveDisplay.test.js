@@ -92,7 +92,7 @@ describe('Move Display', () => {
             .trim();
 
         // Expected format: all variations should appear after their respective main line moves
-        const expectedFormat = '1. c4 e5 (1...e6 2. Nc3) (1...c5 2. g3) 2. Nc3 Nf6 (2...Bb4 3. g3) (2...Bc5 3. e3) 3. g3 (3. d3) 3...Bb4 4. Bg2 Nc6 (4...O-O 5. e4) 5. Nd5';
+        const expectedFormat = '1. c4 e5 (1... e6 2. Nc3) (1... c5 2. g3) 2. Nc3 Nf6 (2...Bb4 3. g3) (2...Bc5 3. e3) 3. g3 (3. d3) 3...Bb4 4. Bg2 Nc6 (4...O-O 5. e4) 5. Nd5';
 
         expect(cleanedHtml).toBe(expectedFormat);
     });
@@ -146,7 +146,7 @@ describe('Move Display', () => {
             .trim();
 
         // Expected format: variations should appear after black's move
-        const expectedFormat = '1. c4 e5 (1...e6 2. Nc3) (1...c5 2. g3) 2. Nc3 Nf6 3. g3 Bb4 4. Bg2 Nc6 5. Nd5';
+        const expectedFormat = '1. c4 e5 (1... e6 2. Nc3) (1... c5 2. g3) 2. Nc3 Nf6 3. g3 Bb4 4. Bg2 Nc6 5. Nd5';
 
         expect(cleanedHtml).toBe(expectedFormat);
     });
